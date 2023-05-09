@@ -3,7 +3,7 @@
 
 /**
  * Folder Organization:
- * Final: "Open channel" with Sender and Receiver directories + each party's public key
+ * Final: "Open channel" with Sender and Receiver directories + each party's public key + encrypted msg sent by sender
  * Sender dir: sender.cpp, files with public and private keys, plaintext file
  * Receiver dir: receiver.cpp + files with public and private keys
  * 
@@ -18,6 +18,7 @@
  * Encrypt message with AES key
  * Encrypt AES KEY with RECEIVER'S RSA PUBLIC key
  * Authenticate msg with MAC and append MAC to msg
- * Send encrypted messaged with encrypted AES key and MAC
+ * Send encrypted messaged with encrypted AES key and MAC to "open channel"
+ * 
  * 
 */
