@@ -1,5 +1,11 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
+#include <openssl/rsa.h>
+#include <openssl/pem.h>
+
+// Run from overall Final folder
+// g++ -o sender/senderOut sender/sender.cpp -I/usr/local/opt/openssl@1.1/include -L/usr/local/opt/openssl@1.1/lib -lssl -lcrypto
+// ./Sender/senderOut
 
 /**
  * Folder Organization:
@@ -20,5 +26,30 @@
  * Authenticate msg with MAC and append MAC to msg
  * Send encrypted messaged with encrypted AES key and MAC to "open channel"
  * 
- * 
 */
+
+int generateRSAKeyPair();
+
+int main(){
+    
+    // Add condition that this code only runs when there is no public/private key already?
+    generateRSAKeyPair();
+    return 0;
+}
+
+int generateRSAKeyPair(){
+    RSA *rsa = RSA_generate_key(2048, RSA_F4, nullptr, nullptr);
+
+    // Write private key to pem file. 
+    FILE* fp = fopen("./Sender/sender_priv_key.pem", "wb");
+    PEM_write_RSAPrivateKey(fp, rsa, nullptr, nullptr, 0, nullptr, nullptr);
+    fclose(fp);
+
+    fp = fopen("sender_public_key.pem", "wb");
+    PEM_write_RSAPublicKey(fp, rsa);
+    fclose(fp);
+
+    RSA_free(rsa);
+    
+    return 0;
+}
