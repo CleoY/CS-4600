@@ -5,6 +5,10 @@
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
 
+// Run from overall Final folder
+// g++ -o Receiver/receiverOut Receiver/receiver.cpp -I/usr/local/opt/openssl@1.1/include -L/usr/local/opt/openssl@1.1/lib -lssl -lcrypto
+// ./Receiver/receiverOut
+
 /**
  * Folder Organization:
  * Final: "Open channel" with Sender and Receiver directories + each party's public key
@@ -25,6 +29,7 @@
  * Read msg
  * 
 */
+
 
 int generateRSAKeyPair();
 
