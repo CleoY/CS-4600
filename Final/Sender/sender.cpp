@@ -31,14 +31,10 @@
  * 
 */
 
-int generateRSAKeyPair();
 int generateAESKey();
 int encryptMessage(const char* msg, const char* AES_file);
 
 int main(){
-    
-    // Add condition that this code only runs when there is no public/private key already?
-    generateRSAKeyPair();
 
     generateAESKey();
 
@@ -47,22 +43,6 @@ int main(){
     return 0;
 }
 
-int generateRSAKeyPair(){
-    RSA *rsa = RSA_generate_key(2048, RSA_F4, nullptr, nullptr);
-
-    // Write private key to pem file. 
-    FILE* fp = fopen("./Sender/sender_priv_key.pem", "wb");
-    PEM_write_RSAPrivateKey(fp, rsa, nullptr, nullptr, 0, nullptr, nullptr);
-    fclose(fp);
-
-    fp = fopen("sender_public_key.pem", "wb");
-    PEM_write_RSAPublicKey(fp, rsa);
-    fclose(fp);
-
-    RSA_free(rsa);
-    
-    return 0;
-}
 
 int generateAESKey(){ // Generate 256-bit AES key
     unsigned char AES_key[EVP_MAX_KEY_LENGTH];
@@ -91,6 +71,7 @@ int generateAESKey(){ // Generate 256-bit AES key
 
     return 0;
 }
+
 
 int encryptMessage(const char* msg, const char* AES_file){
     // Open file with AES key

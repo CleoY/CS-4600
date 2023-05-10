@@ -31,28 +31,8 @@
 */
 
 
-int generateRSAKeyPair();
 
 int main(){
-    
-    // Add condition that this code only runs when there is no public/private key already?
-    generateRSAKeyPair();
-    return 0;
-}
 
-int generateRSAKeyPair(){
-    RSA *rsa = RSA_generate_key(2048, RSA_F4, nullptr, nullptr);
-
-    // Write private key to pem file. 
-    FILE* fp = fopen("./Receiver/receiver_priv_key.pem", "wb");
-    PEM_write_RSAPrivateKey(fp, rsa, nullptr, nullptr, 0, nullptr, nullptr);
-    fclose(fp);
-
-    fp = fopen("receiver_public_key.pem", "wb");
-    PEM_write_RSAPublicKey(fp, rsa);
-    fclose(fp);
-
-    RSA_free(rsa);
-    
     return 0;
 }
