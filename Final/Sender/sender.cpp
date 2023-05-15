@@ -93,7 +93,7 @@ int encryptMessage(const char* msg, const char* AES_file){
     
     // Input plaintext message file and output to encrypted file
     std::ifstream input_file(msg, std::ios::binary);
-    std::ofstream output_file("encrypted.txt.enc", std::ios::binary);
+    std::ofstream output_file("./Sender/encrypted.txt.enc", std::ios::binary);
 
     // Intialize temp variables for encryption
     unsigned char plaintext[128];
