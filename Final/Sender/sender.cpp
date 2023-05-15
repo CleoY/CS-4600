@@ -74,9 +74,6 @@ int generateAESKey(){ // Generate 256-bit AES key
     fwrite(AES_key, sizeof(unsigned char), AES_length, fp);
     fclose(fp);
 
-    // Release temp var
-    delete[] AES_key;
-
     return 0;
 }
 
@@ -124,9 +121,6 @@ int encryptMessage(const char* msg, const char* AES_file){
     output_file.write(reinterpret_cast<char*>(ciphertext), written_bytes);
 
     // Release temp vars
-    delete[] plaintext; // necess?
-    delete[] ciphertext;
-    delete[] AES_key;
     EVP_CIPHER_CTX_free(ctx);
     input_file.close();
     output_file.close();
@@ -173,8 +167,6 @@ int encrypt_AES_key(const char* AES_file, const char* receiver_public_key){
 
     // Release temp vars
     RSA_free(rsa);
-    delete[] AES_key;
-    delete[] encrypted_AES_key;
 
     return 0;
 }
