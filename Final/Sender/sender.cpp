@@ -34,12 +34,17 @@
 
 int generateAESKey();
 int encryptMessage(const char* msg, const char* AES_file);
+int encrypt_AES_key(const char* AES_file, const char* receiver_public_key);
 
 int main(){
 
     generateAESKey();
+    
     // What happens when the msg does not exist?? Check by decrypting!!
     encryptMessage("./Sender/message.txt", "./Sender/aes_key.bin");
+
+    encrypt_AES_key("./Sender/aes_key.bin", "receiver_public_key.pem");
+
     return 0;
 }
 
@@ -69,6 +74,9 @@ int generateAESKey(){ // Generate 256-bit AES key
     fwrite(AES_key, sizeof(unsigned char), AES_length, fp);
     fclose(fp);
 
+    // Release temp var
+    delete[] AES_key;
+
     return 0;
 }
 
@@ -82,6 +90,7 @@ int encryptMessage(const char* msg, const char* AES_file){
     FILE *aes_fp = fopen(AES_file, "rb");    
     if(aes_fp == nullptr){
         printf("The AES key does not exist. Please generate a key before encrypting any messages.\n");
+        fclose(aes_fp);
         return -1;
     }
     fread(AES_key, 1, EVP_MAX_KEY_LENGTH, aes_fp);
@@ -114,10 +123,58 @@ int encryptMessage(const char* msg, const char* AES_file){
     EVP_EncryptFinal_ex(ctx, ciphertext, &written_bytes);
     output_file.write(reinterpret_cast<char*>(ciphertext), written_bytes);
 
-
+    // Release temp vars
+    delete[] plaintext; // necess?
+    delete[] ciphertext;
+    delete[] AES_key;
     EVP_CIPHER_CTX_free(ctx);
     input_file.close();
     output_file.close();
+
+    return 0;
+}
+
+int encrypt_AES_key(const char* AES_file, const char* receiver_public_key){
+    // Get receiver's public key
+    FILE *rsa_fp = fopen(receiver_public_key, "r");
+    if(rsa_fp == nullptr){
+        printf("Cannot find receiver's public key. AES key encryption with RSA public key failed.");
+        fclose(rsa_fp);
+        return -1;
+    }
+    RSA* rsa = PEM_read_RSA_PUBKEY(rsa_fp, NULL, NULL, NULL);
+    fclose(rsa_fp);
+
+    // Get AES key
+    unsigned char AES_key[EVP_MAX_KEY_LENGTH];
+    memset(AES_key, 0, EVP_MAX_KEY_LENGTH); 
+    FILE *aes_fp = fopen(AES_file, "rb");    
+    if(aes_fp == nullptr){
+        printf("The AES key does not exist. Please generate a key before encrypting any messages.\n");
+        fclose(aes_fp);
+        return -1;
+    }
+    fread(AES_key, 1, EVP_MAX_KEY_LENGTH, aes_fp);
+    fclose(aes_fp);
+
+    // Initialize encrypted AES key variable and RSA key size, AES key size, and encrypted key size temp variables
+    int aes_key_size = 32;
+    int rsa_key_size = RSA_size(rsa);
+    unsigned char encrypted_AES_key[rsa_key_size];
+    memset(encrypted_AES_key, 0, rsa_key_size); 
+
+    // Encrypt AES key with RSA public key
+    int encrypted_key_size = RSA_public_encrypt(aes_key_size, AES_key, encrypted_AES_key,rsa, RSA_PKCS1_OAEP_PADDING);
+
+    // Write encrypted AES key to file
+    FILE* enc_AES_file = fopen("./Sender/encrypted_AES_key.bin", "wb");
+    fwrite(encrypted_AES_key, 1, encrypted_key_size, enc_AES_file);
+    fclose(enc_AES_file);
+
+    // Release temp vars
+    RSA_free(rsa);
+    delete[] AES_key;
+    delete[] encrypted_AES_key;
 
     return 0;
 }
