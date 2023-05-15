@@ -5,6 +5,7 @@
 #include <openssl/evp.h>
 #include <cstring>
 #include <openssl/rand.h>
+#include <fstream>
 
 // Run from overall Final folder
 // g++ -o Sender/senderOut Sender/sender.cpp -I/usr/local/opt/openssl@1.1/include -L/usr/local/opt/openssl@1.1/lib -lssl -lcrypto
@@ -37,8 +38,7 @@ int encryptMessage(const char* msg, const char* AES_file);
 int main(){
 
     generateAESKey();
-
-    // Add condition that it will only work if AES key exists
+    // What happens when the msg does not exist?? Check by decrypting!!
     encryptMessage("./Sender/message.txt", "./Sender/aes_key.bin");
     return 0;
 }
@@ -74,23 +74,50 @@ int generateAESKey(){ // Generate 256-bit AES key
 
 
 int encryptMessage(const char* msg, const char* AES_file){
+    // Set key to 0 to ensure buffer is clear of any previous data
+    unsigned char AES_key[EVP_MAX_KEY_LENGTH];
+    memset(AES_key, 0, EVP_MAX_KEY_LENGTH); 
+
     // Open file with AES key
-    FILE *msg_fp = fopen(msg, "r");
-    FILE *aes_fp = fopen(AES_file, "rb");
-    if(msg_fp == nullptr){
-        printf("The message file does not exist.\n");
-        return -1;
-    }
-    
+    FILE *aes_fp = fopen(AES_file, "rb");    
     if(aes_fp == nullptr){
         printf("The AES key does not exist. Please generate a key before encrypting any messages.\n");
         return -1;
     }
-
-    
-
-
+    fread(AES_key, 1, EVP_MAX_KEY_LENGTH, aes_fp);
     fclose(aes_fp);
-    fclose(msg_fp);
+
+    // Encryption context with AES-256 CBC mode
+    EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
+    EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, AES_key, NULL);
+    
+    // Input plaintext message file and output to encrypted file
+    std::ifstream input_file(msg, std::ios::binary);
+    std::ofstream output_file("encrypted.txt.enc", std::ios::binary);
+
+    // Intialize temp variables for encryption
+    unsigned char plaintext[128];
+    unsigned char ciphertext[128 + EVP_CIPHER_CTX_block_size(ctx)];
+    memset(plaintext, 0, 128); 
+    memset(ciphertext, 0, 128 + EVP_CIPHER_CTX_block_size(ctx)); 
+    int read_bytes = 0;
+    int written_bytes = 0;
+
+    // Encrypt message
+    while(input_file.read(reinterpret_cast<char*>(plaintext), 128)){
+        EVP_EncryptUpdate(ctx, ciphertext, &written_bytes, plaintext, 128);
+        output_file.write(reinterpret_cast<char*>(ciphertext), written_bytes);
+        read_bytes += 128;
+    }
+
+    // Encrypt last block if it is not 128 bits long and needs padding
+    EVP_EncryptFinal_ex(ctx, ciphertext, &written_bytes);
+    output_file.write(reinterpret_cast<char*>(ciphertext), written_bytes);
+
+
+    EVP_CIPHER_CTX_free(ctx);
+    input_file.close();
+    output_file.close();
+
     return 0;
 }
