@@ -39,7 +39,8 @@ int generateAESKey();
 int encryptMessage(const char* msg, const char* AES_file);
 int encrypt_AES_key(const char* AES_file, const char* receiver_public_key);
 int combineFiles(const char* file1, const char* file2, const char* delimiter, const char* outputFile);
-int generateHMAC(const char* HMAC_key_file);
+int generateHMAC(const char* HMAC_key_file, int key_size, const char* data, int dataLength, unsigned char* hmac);
+//int generateHMAC(const char* HMAC_key_file);
 
 int main(){
     generateAESKey();
@@ -202,7 +203,79 @@ int combineFiles(const char* file1, const char* file2, const char* delimiter, co
 }
 
 
-int generateHMAC(const char* HMAC_key_file){
+int getFileSize(const char* fileName){
+    FILE* file = fopen(fileName, "rb");
+    if(file == nullptr){
+        printf("Could not open file.\n");
+        return -1;
+    }
+
+    // Seek the end of the file to get the position at the end, which is the file size
+    fseek(file, 0, SEEK_END);
+    int fileSize = ftell(file);
+
+    fclose(file);
+
+    return fileSize;
+}
+
+
+int generateHMAC(const char* keyFile, const char* inputFile){
+    // Read HMAC key from file given in keyFile parameter
+    unsigned char HMAC_key[EVP_MAX_KEY_LENGTH];
+    memset(HMAC_key, 0, EVP_MAX_KEY_LENGTH);
+    FILE *key_fp = fopen(keyFile, "rb");
+    if(key_fp == nullptr){
+        printf("The HMAC key does not exist. Please generate a key and share it between both parties.\n");
+        fclose(key_fp);
+        return -1;
+    }
+    fread(HMAC_key, 1, EVP_MAX_KEY_LENGTH, key_fp);
+    fclose(key_fp);
+
+    // Place data from inputFile into a buffer
+    std::ifstream input_data(inputFile, std::ios::binary);
+    long fileSize = getFileSize(inputFile);
+    unsigned char data[fileSize]; ///// NEED TO GET DATA SIZE
+    memset(data, 0, fileSize);
+    input_data.read(reinterpret_cast<char*>(data), fileSize);
+    input_data.close();
+
+    
+
+    // // Input plaintext message file and output to encrypted file
+    // std::ifstream input_file(msg, std::ios::binary);
+    // std::ofstream output_file("./Sender/encrypted.txt.enc", std::ios::binary);
+
+    // // Intialize temp variables for encryption
+    // unsigned char plaintext[128];
+    // unsigned char ciphertext[128 + EVP_CIPHER_CTX_block_size(ctx)];
+    // memset(plaintext, 0, 128); 
+    // memset(ciphertext, 0, 128 + EVP_CIPHER_CTX_block_size(ctx)); 
+    // int read_bytes = 0;
+    // int written_bytes = 0;
+
+    // // Encrypt message
+    // while(input_file.read(reinterpret_cast<char*>(plaintext), 128)){
+    //     EVP_EncryptUpdate(ctx, ciphertext, &written_bytes, plaintext, 128);
+    //     output_file.write(reinterpret_cast<char*>(ciphertext), written_bytes);
+    //     read_bytes += 128;
+    // }
+
+
+
+
 
     return 0;
 }
+
+
+// int generateHMAC(const char* HMAC_key_file, int key_size, const char* data, int dataLength, unsigned char* hmac){
+//     HMAC_CTX* ctx = HMAC_CTX_new();
+//     HMAC_Init_ex(ctx, HMAC_key_file, key_size, EVP_sha256(), NULL);
+//     HMAC_Update(ctx, data, dataLength);
+//     int hmacLength;
+//     HMAC_Final(ctx, hmac, &hmacLength);
+//     HMAC_CTX_free(ctx);
+//     return 0;
+// }
