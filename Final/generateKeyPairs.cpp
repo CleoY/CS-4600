@@ -19,7 +19,7 @@ int generateRSAKeyPair(int option){
     const char* privateFile;
     const char* publicFile;
     RSA *rsa = RSA_generate_key(2048, RSA_F4, nullptr, nullptr);
-
+    
     // option 1 is generate the sender's key pair
     if(option == 1){
         privateFile = "./Sender/sender_priv_key.pem";
