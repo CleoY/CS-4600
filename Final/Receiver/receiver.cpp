@@ -50,7 +50,7 @@ int main(){
 
     decryptAESKey("./Receiver/enc_AES_key.bin", "./Receiver/receiver_priv_key.pem");
 
-    // //decryptMessage("./Receiver/msg.txt.enc", "./Receiver/dec_AES_key.bin");
+    decryptMessage("./Receiver/msg.txt.enc", "./Receiver/dec_AES_key&iv.bin");
 
     return 0;
 }
@@ -172,7 +172,6 @@ int authenticateHMAC(const char* keyFile, const char* inputFile, const char* giv
 }
 
 
- //keyToDecrypt may not actually be unsigned
 int decryptAESKey(const char* keyToDecrypt, const char* privKeyFile){
     // Open private key file
     FILE* rsa_fp = fopen(privKeyFile, "r");
@@ -203,6 +202,11 @@ int decryptAESKey(const char* keyToDecrypt, const char* privKeyFile){
     
     // Convert keyToDecrypt to an unsigned char to pass into RSA_private_decrypt() func
     int encryptedLength = getFileSize(keyToDecrypt); // length of AES key; SHOULD just be EVP_MAX_KEY_LENGTH
+    // if(encryptedLength <= 0){
+    //     printf("Error: Invalid encryption file.\n");
+    //     enc_AES_stream.close();
+    //     return -1;
+    // }
     unsigned char* keyToDecrypt_ui = new unsigned char[encryptedLength];
     enc_AES_stream.read(reinterpret_cast<char*>(keyToDecrypt_ui), encryptedLength);
     enc_AES_stream.close();
@@ -222,13 +226,20 @@ int decryptAESKey(const char* keyToDecrypt, const char* privKeyFile){
     // \/ CONDITION MAY BE WRONG
     if(decryptedLength == -1){ // or the length < 0 or =-1
         printf("Error: Could not decrypt AES key.\n");
+        RSA_free(rsa);
         return -1;
     }
 
     // Write decrypted AES key to file
     /// May need tochange to stream version to convert unsigned char back to const char
     FILE* dec_AES_file = fopen("./Receiver/dec_AES_key&iv.bin", "wb");
-    fwrite(retrieved_AES_key_iv, 1, EVP_MAX_KEY_LENGTH, dec_AES_file);
+    fwrite(retrieved_AES_key_iv, 1, decryptedLength, dec_AES_file); // encrypted length may not be what the decrypted length should be?!
+    //// IV IS LEFT OUT WHEN WRITTEN TO dec_AES_key&iv.bin
+
+
+
+
+
     fclose(dec_AES_file);
 
 
