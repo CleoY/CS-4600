@@ -118,11 +118,13 @@ int encryptMessage(const char* msg, const char* AES_file){
     std::ifstream input_file(msg, std::ios::binary);
     if(!input_file){
         printf("Error: Could not find message file.\n");
+        input_file.close();
         return -1;
     }
     std::ofstream output_file("./Sender/encrypted.txt.enc", std::ios::binary);
     if(!output_file){
         printf("Error: Could not create output file.\n");
+        output_file.close();
         return -1;
     }
 
@@ -207,16 +209,19 @@ int combineFiles(const char* file1, const char* file2, const char* delimiter, co
     std::ifstream input1(file1, std::ios::binary);
     if(!input1){
         printf("Error: Could not open first input file.\n");
+        input1.close();
         return -1;
     }
     std::ifstream input2(file2, std::ios::binary);
     if(!input2){
         printf("Error: Could not open second input file.\n");
+        input2.close();
         return -1;
     }
     std::ofstream output(outputFile, std::ios::binary);
     if(!output){
         printf("Error: Could not create output file.\n");
+        output.close();
         return -1;
     }
     
