@@ -35,12 +35,14 @@
 
 int getFileSize(const char* fileName);
 int splitFile(const char* fileName, const char* delimiter, const char* output1, const char* output2);
+int authenticateHMAC(const char* keyFile, const char* inputFile, const char* given_HMAC_file);
 
 int main(){
     // check what happens if the delimiter cannot be found
     // Split the full package sent by sender into encrypted message and key and HMAC
     splitFile("full_package.bin", "\n`````\n", "./Receiver/encrypted_msg_and_key.bin", "./Receiver/parsed_HMAC.bin");
     
+    authenticateHMAC("./Receiver/HMAC_key.bin", "./Receiver/encrypted_msg_and_key.bin", "./Receiver/parsed_HMAC.bin");
 
 
     return 0;
@@ -105,7 +107,7 @@ int splitFile(const char* fileName, const char* delimiter, const char* output1, 
 }
 
 
-int authenticateHMAC(const char* keyFile, const char* inputFile){
+int authenticateHMAC(const char* keyFile, const char* inputFile, const char* given_HMAC_file){
     // Read HMAC key from file given in keyFile parameter
     unsigned char HMAC_key[EVP_MAX_KEY_LENGTH];
     memset(HMAC_key, 0, EVP_MAX_KEY_LENGTH);
@@ -140,8 +142,24 @@ int authenticateHMAC(const char* keyFile, const char* inputFile){
     HMAC(EVP_sha256(), HMAC_key, EVP_MAX_KEY_LENGTH, dataBuffer.data(), dataBuffer.size(), calc_hmac, &hmacLength);
 
     // Verify given HMAC with calculated HMAC
+    // Read given HMAC from file
+    unsigned char given_hmac[EVP_MAX_MD_SIZE];
+    memset(given_hmac, 0, EVP_MAX_MD_SIZE);
+    FILE* given_hmac_fp = fopen(given_HMAC_file, "rb");
+    if(given_hmac_fp == nullptr){
+        printf("Error: The given HMAC file does not exist.\n");
+        fclose(given_hmac_fp);
+        return -1;
+    }
+    fread(given_hmac, 1, EVP_MAX_MD_SIZE, given_hmac_fp);
+    fclose(given_hmac_fp);
 
-
+    // Compare given HMAC to calculated HMAC
+    if(memcmp(given_hmac, calc_hmac, sizeof(calc_hmac)) == 0){
+        printf("Verified: The HMAC's match.\n");
+    } else{
+        printf("Warning: HMAC's do no match.\n");
+    }
 
     return 0;
 }

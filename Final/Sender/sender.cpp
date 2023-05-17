@@ -173,7 +173,7 @@ int encrypt_AES_key(const char* AES_file, const char* receiver_public_key){
     // Get AES key
     unsigned char AES_key[EVP_MAX_KEY_LENGTH];
     memset(AES_key, 0, EVP_MAX_KEY_LENGTH); 
-    FILE *aes_fp = fopen(AES_file, "rb");    
+    FILE* aes_fp = fopen(AES_file, "rb");    
     if(aes_fp == nullptr){
         printf("The AES key does not exist. Please generate a key before encrypting any messages.\n");
         fclose(aes_fp);
