@@ -39,7 +39,9 @@ int generateAESKey();
 int encryptMessage(const char* msg, const char* AES_file);
 int encrypt_AES_key(const char* AES_file, const char* receiver_public_key);
 int combineFiles(const char* file1, const char* file2, const char* delimiter, const char* outputFile);
-int generateHMAC(const char* HMAC_key_file, int key_size, const char* data, int dataLength, unsigned char* hmac);
+int getFileSize(const char* fileName);
+int generateHMAC(const char* keyFile, const char* inputFile);
+//int generateHMAC(const char* HMAC_key_file, int key_size, const char* data, int dataLength, unsigned char* hmac);
 //int generateHMAC(const char* HMAC_key_file);
 
 int main(){
@@ -53,7 +55,10 @@ int main(){
     // Combine encrypted message with encrypted AES key file with \n~~~~~\n as a delimiter. 
     combineFiles("./Sender/encrypted.txt.enc", "./Sender/encrypted_AES_key.bin", "\n~~~~~\n", "./Sender/enc_msg_and_key.bin");
 
-    generateHMAC("./Sender/HMAC_key.bin");
+    //int fileSize = getFileSize("./Sender/enc_msg_and_key.bin");
+    //printf("File size: %d", fileSize);
+
+    generateHMAC("./Sender/HMAC_key.bin", "./Sender/enc_msg_and_key.bin");
 
     return 0;
 }
@@ -250,49 +255,18 @@ int generateHMAC(const char* keyFile, const char* inputFile){
     
     // Generate HMAC-SHA256
     unsigned char hmac[EVP_MAX_MD_SIZE];
-    unsigned int hmacLength;
+    unsigned int hmacLength; ////// not init = ok?
+    memset(hmac, 0, EVP_MAX_MD_SIZE);
     HMAC(EVP_sha256(), HMAC_key, EVP_MAX_KEY_LENGTH, dataBuffer.data(), dataBuffer.size(), hmac, &hmacLength);
 
     // Write HMAC to a file
-    FILE* HMAC_file = fopen("HMAC.bin", "wb");
+    FILE* HMAC_file = fopen("./Sender/HMAC.bin", "wb");
     if(HMAC_file == nullptr){
         printf("Error: Could not create HMAC file.\n");
         return -1;
     }    
     fwrite(hmac, 1, hmacLength, HMAC_file);
     fclose(HMAC_file);
-    
-    // std::ifstream input_data(inputFile, std::ios::binary);
-    // long fileSize = getFileSize(inputFile);
-    // unsigned char data[fileSize]; ///// NEED TO GET DATA SIZE
-    // memset(data, 0, fileSize);
-    // input_data.read(reinterpret_cast<char*>(data), fileSize);
-    // input_data.close();
-
-    
-
-    // // Input plaintext message file and output to encrypted file
-    // std::ifstream input_file(msg, std::ios::binary);
-    // std::ofstream output_file("./Sender/encrypted.txt.enc", std::ios::binary);
-
-    // // Intialize temp variables for encryption
-    // unsigned char plaintext[128];
-    // unsigned char ciphertext[128 + EVP_CIPHER_CTX_block_size(ctx)];
-    // memset(plaintext, 0, 128); 
-    // memset(ciphertext, 0, 128 + EVP_CIPHER_CTX_block_size(ctx)); 
-    // int read_bytes = 0;
-    // int written_bytes = 0;
-
-    // // Encrypt message
-    // while(input_file.read(reinterpret_cast<char*>(plaintext), 128)){
-    //     EVP_EncryptUpdate(ctx, ciphertext, &written_bytes, plaintext, 128);
-    //     output_file.write(reinterpret_cast<char*>(ciphertext), written_bytes);
-    //     read_bytes += 128;
-    // }
-
-
-
-
 
     return 0;
 }
