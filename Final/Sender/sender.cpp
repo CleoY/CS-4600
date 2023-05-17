@@ -183,23 +183,23 @@ int encrypt_AES_key(const char* AES_file, const char* receiver_public_key){
     // Initialize encrypted AES key variable and RSA key size, AES key size, and encrypted key size temp variables
     int aes_key_size = 32;
     int rsa_key_size = RSA_size(rsa); // ERROR HERE
-    // unsigned char encrypted_AES_key[rsa_key_size];
-    // memset(encrypted_AES_key, 0, rsa_key_size); 
+    unsigned char encrypted_AES_key[rsa_key_size];
+    memset(encrypted_AES_key, 0, rsa_key_size); 
 
-    // // Encrypt AES key with RSA public key
-    // int encrypted_key_size = RSA_public_encrypt(aes_key_size, AES_key, encrypted_AES_key,rsa, RSA_PKCS1_OAEP_PADDING);
+    // Encrypt AES key with RSA public key
+    int encrypted_key_size = RSA_public_encrypt(aes_key_size, AES_key, encrypted_AES_key,rsa, RSA_PKCS1_OAEP_PADDING);
 
-    // printf("Encrypted AES key");
+    printf("Encrypted AES key");
 
-    // // Write encrypted AES key to file
-    // FILE* enc_AES_file = fopen("./Sender/encrypted_AES_key.bin", "wb");
-    // fwrite(encrypted_AES_key, 1, encrypted_key_size, enc_AES_file);
-    // fclose(enc_AES_file);
+    // Write encrypted AES key to file
+    FILE* enc_AES_file = fopen("./Sender/encrypted_AES_key.bin", "wb");
+    fwrite(encrypted_AES_key, 1, encrypted_key_size, enc_AES_file);
+    fclose(enc_AES_file);
 
-    // printf("Wrote enc AES to file");
+    printf("Wrote enc AES to file");
 
-    // // Release temp vars
-    // RSA_free(rsa);
+    // Release temp vars
+    RSA_free(rsa);
 
     return 0;
 }
