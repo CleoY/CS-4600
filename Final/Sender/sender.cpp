@@ -116,7 +116,15 @@ int encryptMessage(const char* msg, const char* AES_file){
     
     // Input plaintext message file and output to encrypted file
     std::ifstream input_file(msg, std::ios::binary);
+    if(!input_file){
+        printf("Error: Could not find message file.\n");
+        return -1;
+    }
     std::ofstream output_file("./Sender/encrypted.txt.enc", std::ios::binary);
+    if(!output_file){
+        printf("Error: Could not create output file.\n");
+        return -1;
+    }
 
     // Intialize temp variables for encryption
     unsigned char plaintext[128];
@@ -197,8 +205,20 @@ int encrypt_AES_key(const char* AES_file, const char* receiver_public_key){
 
 int combineFiles(const char* file1, const char* file2, const char* delimiter, const char* outputFile){
     std::ifstream input1(file1, std::ios::binary);
+    if(!input1){
+        printf("Error: Could not open first input file.\n");
+        return -1;
+    }
     std::ifstream input2(file2, std::ios::binary);
+    if(!input2){
+        printf("Error: Could not open second input file.\n");
+        return -1;
+    }
     std::ofstream output(outputFile, std::ios::binary);
+    if(!output){
+        printf("Error: Could not create output file.\n");
+        return -1;
+    }
     
     // Append input1, delimiter, and input2 to output file
     output << input1.rdbuf() << delimiter << input2.rdbuf();

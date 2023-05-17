@@ -4,6 +4,9 @@
 #include <openssl/err.h>
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
+#include <iostream>
+#include <fstream>
+#include <string>
 
 // Run from overall Final folder
 // g++ -o Receiver/receiverOut Receiver/receiver.cpp -I/usr/local/opt/openssl@1.1/include -L/usr/local/opt/openssl@1.1/lib -lssl -lcrypto
@@ -57,20 +60,18 @@ int getFileSize(const char* fileName){
 
 
 // Parse the package given by the sender. 
-int splitFile(const char* fileName, const char* parsedPortion, const char* delimiter){
+int splitFile(const char* fileName, const char* delimiter, const char* output1, const char* output2){
     // Open file
-    FILE* file = fopen(fileName, "rb");
-    if(file == nullptr){
-        printf("Error: failed to open file.\n");
+    std::ifstream inputFile(fileName, std::ios::binary);
+    if(!inputFile){
+        printf("Error: Could not open input file.\n");
+        return -1;
     }
-    
-    // Get file size
-    int fileSize = getFileSize(fileName);
 
-    int bufferSize = 1024;
-    char buffer[bufferSize];
-
-
+    // Create output streams for resulting files
+    std::ofstream outputFile1(output1, std::ios::binary);
+    std::ofstream outputFile2(output2, std::ios::binary);
+    if()
 
     return 0;
 }
