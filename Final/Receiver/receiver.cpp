@@ -30,9 +30,52 @@
  * 
 */
 
-
+int getFileSize(const char* fileName);
+int getTail(const char* fileName, const char* parsedPortion, const char* delimiter);
 
 int main(){
 
     return 0;
+}
+
+
+int getFileSize(const char* fileName){
+    FILE* file = fopen(fileName, "rb");
+    if(file == nullptr){
+        printf("Could not open file.\n");
+        return -1;
+    }
+
+    // Seek the end of the file to get the position at the end, which is the file size
+    fseek(file, 0, SEEK_END);
+    int fileSize = ftell(file);
+
+    fclose(file);
+
+    return fileSize;
+}
+
+
+// Parse the package given by the sender. 
+int splitFile(const char* fileName, const char* parsedPortion, const char* delimiter){
+    // Open file
+    FILE* file = fopen(fileName, "rb");
+    if(file == nullptr){
+        printf("Error: failed to open file.\n");
+    }
+    
+    // Get file size
+    int fileSize = getFileSize(fileName);
+
+    int bufferSize = 1024;
+    char buffer[bufferSize];
+
+
+
+    return 0;
+}
+
+
+int authenticateHMAC(const char* givenFile){
+
 }

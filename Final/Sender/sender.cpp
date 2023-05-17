@@ -60,7 +60,7 @@ int main(){
     generateHMAC("./Sender/HMAC_key.bin", "./Sender/enc_msg_and_key.bin");
 
     // Combine encrypted message and key with HMAC and place complete file in "open channel"
-    combineFiles("./Sender/enc_msg_and_key.bin", "HMAC.bin", "\n`````\n", "full_package.bin");
+    combineFiles("./Sender/enc_msg_and_key.bin", "./Sender/HMAC.bin", "\n`````\n", "full_package.bin");
 
 
     return 0;
