@@ -1,11 +1,12 @@
 #include <openssl/rsa.h>
 #include <openssl/pem.h>
-#include <openssl/rsa.h>
+#include <openssl/rand.h>
 
 // g++ -o keyGeneration generateKeyPairs.cpp -I/usr/local/opt/openssl@1.1/include -L/usr/local/opt/openssl@1.1/lib -lssl -lcrypto
 // ./keyGeneration
 
 int generateRSAKeyPair(int option);
+int generateHMACKey();
 
 int main(){
     // Generate sender's key pair
@@ -13,8 +14,11 @@ int main(){
 
     // Generate receiver's key pair
     generateRSAKeyPair(2);
+
+    generateHMACKey();
     return 0;
 }
+
 
 int generateRSAKeyPair(int option){
     const char* privateFile;
@@ -51,5 +55,39 @@ int generateRSAKeyPair(int option){
     BN_free(bn);
     RSA_free(rsa);
     
+    return 0;
+}
+
+
+int generateHMACKey(){
+    int key_size = 32;
+    unsigned char key[key_size];
+    
+    // Randomly generate HMAC key
+    if(RAND_bytes(key, key_size)!=1){
+        printf("HMAC key generation failed.\n");
+        return -1;
+    }
+
+    // Write HMAC key to sender and receiver's folders to ensure they both have the key
+    // Write HMAC key to sender's folder
+    FILE* fp_sender = fopen("./Sender/HMAC_key.bin", "wb");
+
+
+    // Error handling to ensure fwrite worked?
+
+    fwrite(key, sizeof(unsigned char), key_size, fp_sender);
+    fclose(fp_sender);
+
+    
+    // Write HMAC key to receiver's folder
+    FILE* fp_receiver = fopen("./Receiver/HMAC_key.bin", "wb");
+
+
+    // Error handling to ensure fwrite worked?
+
+    fwrite(key, sizeof(unsigned char), key_size, fp_receiver);
+    fclose(fp_receiver);
+
     return 0;
 }

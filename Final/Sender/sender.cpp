@@ -59,8 +59,7 @@ int generateAESKey(){ // Generate 256-bit AES key
     memset(AES_key, 0, EVP_MAX_KEY_LENGTH); 
 
     // Generate random bytes for AES key
-    int randFlag = RAND_bytes(AES_key, AES_length);
-    if(randFlag != 1){ // Check to ensure AES key was generated successfully
+    if(RAND_bytes(AES_key, AES_length) != 1){ // Check to ensure AES key was generated successfully
         printf("Error in generating AES key. Please try again.\n");
         return -1;
     }
