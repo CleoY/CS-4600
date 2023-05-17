@@ -39,13 +39,10 @@ int encrypt_AES_key(const char* AES_file, const char* receiver_public_key);
 int encrypt_AES_key2(const char* AES_file, const char* receiver_public_key);
 
 int main(){
-
     generateAESKey();
-    printf("func 1");
     
     // What happens when the msg does not exist?? Check by decrypting!!
     encryptMessage("./Sender/message.txt", "./Sender/aes_key.bin");
-    printf("func 2");
 
     //encrypt_AES_key2("./Sender/aes_key.bin", "receiver_public_key.pem");
     encrypt_AES_key("./Sender/aes_key.bin", "receiver_public_key.pem");
@@ -133,38 +130,22 @@ int encryptMessage(const char* msg, const char* AES_file){
     return 0;
 }
 
-int encrypt_AES_key2(const char* AES_file, const char* receiver_public_key){
-    printf("Enter func");
-    return 0;
-}
 
 int encrypt_AES_key(const char* AES_file, const char* receiver_public_key){
-    
-    
-    printf("Enter funct\n");
-    
     // Get receiver's public key
     FILE *rsa_fp = fopen(receiver_public_key, "r");
     if(rsa_fp == nullptr){
         printf("Cannot find receiver's public key. AES key encryption with RSA public key failed.");
         fclose(rsa_fp);
         return -1;
-    } else{
-        printf("Found pub key file.\n");
     }
-
     RSA* rsa = PEM_read_RSAPublicKey(rsa_fp, NULL, NULL, NULL);
-
-    // PEM_read_RSA_PUBKEY(rsa_fp, NULL, NULL, NULL); // WRONG FUNCTION
-    ERR_print_errors_fp(stderr);
     fclose(rsa_fp);
 
     if(rsa == nullptr){
         printf("The RSA pointer is NULL.\n");
         return -1;
     }
-
-    printf("Receiver key successfully retrieved.\n");
 
     // Get AES key
     unsigned char AES_key[EVP_MAX_KEY_LENGTH];
@@ -178,8 +159,6 @@ int encrypt_AES_key(const char* AES_file, const char* receiver_public_key){
     fread(AES_key, 1, EVP_MAX_KEY_LENGTH, aes_fp);
     fclose(aes_fp);
 
-    printf("AES key.");
-
     // Initialize encrypted AES key variable and RSA key size, AES key size, and encrypted key size temp variables
     int aes_key_size = 32;
     int rsa_key_size = RSA_size(rsa); // ERROR HERE
@@ -189,14 +168,10 @@ int encrypt_AES_key(const char* AES_file, const char* receiver_public_key){
     // Encrypt AES key with RSA public key
     int encrypted_key_size = RSA_public_encrypt(aes_key_size, AES_key, encrypted_AES_key,rsa, RSA_PKCS1_OAEP_PADDING);
 
-    printf("Encrypted AES key");
-
     // Write encrypted AES key to file
     FILE* enc_AES_file = fopen("./Sender/encrypted_AES_key.bin", "wb");
     fwrite(encrypted_AES_key, 1, encrypted_key_size, enc_AES_file);
     fclose(enc_AES_file);
-
-    printf("Wrote enc AES to file");
 
     // Release temp vars
     RSA_free(rsa);
