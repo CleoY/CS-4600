@@ -233,13 +233,41 @@ int generateHMAC(const char* keyFile, const char* inputFile){
     fread(HMAC_key, 1, EVP_MAX_KEY_LENGTH, key_fp);
     fclose(key_fp);
 
-    // Place data from inputFile into a buffer
-    std::ifstream input_data(inputFile, std::ios::binary);
-    long fileSize = getFileSize(inputFile);
-    unsigned char data[fileSize]; ///// NEED TO GET DATA SIZE
-    memset(data, 0, fileSize);
-    input_data.read(reinterpret_cast<char*>(data), fileSize);
-    input_data.close();
+    // Read data from inputFile
+    FILE* input_fp = fopen(inputFile, "rb");
+    if(input_fp == NULL){
+        printf("Could not find input file.\n");
+        return -1;
+    }
+    int fileSize = getFileSize(inputFile);
+    std::vector<unsigned char> dataBuffer(fileSize);
+    size_t readBytes = fread(dataBuffer.data(), 1, fileSize, input_fp);
+    fclose(input_fp);
+    if(readBytes != fileSize){ // if readBytes < fileSize, reading did not finish
+        printf("Error in reading the input file data.\n"); 
+        return -1;
+    }
+    
+    // Generate HMAC-SHA256
+    unsigned char hmac[EVP_MAX_MD_SIZE];
+    unsigned int hmacLength;
+    HMAC(EVP_sha256(), HMAC_key, EVP_MAX_KEY_LENGTH, dataBuffer.data(), dataBuffer.size(), hmac, &hmacLength);
+
+    // Write HMAC to a file
+    FILE* HMAC_file = fopen("HMAC.bin", "wb");
+    if(HMAC_file == nullptr){
+        printf("Error: Could not create HMAC file.\n");
+        return -1;
+    }    
+    fwrite(hmac, 1, hmacLength, HMAC_file);
+    fclose(HMAC_file);
+    
+    // std::ifstream input_data(inputFile, std::ios::binary);
+    // long fileSize = getFileSize(inputFile);
+    // unsigned char data[fileSize]; ///// NEED TO GET DATA SIZE
+    // memset(data, 0, fileSize);
+    // input_data.read(reinterpret_cast<char*>(data), fileSize);
+    // input_data.close();
 
     
 
