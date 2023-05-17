@@ -2,7 +2,7 @@
 #include <openssl/pem.h>
 #include <openssl/rand.h>
 
-// g++ -o keyGeneration generateKeyPairs.cpp -I/usr/local/opt/openssl@1.1/include -L/usr/local/opt/openssl@1.1/lib -lssl -lcrypto
+// g++ -o keyGeneration generateKeys.cpp -I/usr/local/opt/openssl@1.1/include -L/usr/local/opt/openssl@1.1/lib -lssl -lcrypto
 // ./keyGeneration
 
 int generateRSAKeyPair(int option);
