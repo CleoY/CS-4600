@@ -206,9 +206,9 @@ int decryptAESKey(const char* keyToDecrypt, const char* privKeyFile){
     enc_AES_stream.close();
 
     // Create temp var for decrypted AES key
-    unsigned char* retrieved_AES_key[EVP_MAX_KEY_LENGTH];
-    memset(retrieved_AES_key, 0, EVP_MAX_KEY_LENGTH); 
-
+    unsigned char* retrieved_AES_key = new unsigned char[RSA_size(rsa)];
+    memset(retrieved_AES_key, 0, RSA_size(rsa)); 
+    
     
     int decryptedLength = RSA_private_decrypt(encryptedLength, keyToDecrypt_ui, retrieved_AES_key, rsa, RSA_PKCS1_OAEP_PADDING);
     ////^ MAY BE WRONG
