@@ -7,6 +7,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <vector>
 
 // Run from overall Final folder
 // g++ -o Receiver/receiverOut Receiver/receiver.cpp -I/usr/local/opt/openssl@1.1/include -L/usr/local/opt/openssl@1.1/lib -lssl -lcrypto
@@ -37,7 +38,8 @@ int getFileSize(const char* fileName);
 int splitFile(const char* fileName, const char* delimiter, const char* output1, const char* output2);
 int authenticateHMAC(const char* keyFile, const char* inputFile, const char* given_HMAC_file);
 int decryptAESKey(const char* keyToDecrypt, const char* privKeyFile);
-int decryptMessage(const char* msgToDecrypt, const char* aes_keyFile);
+//int decryptMessage(const char* msgToDecrypt, const char* aes_keyFile);
+int decryptAESKey(const char* keyToDecrypt, const char* privateKeyFile);
 
 int main(){
     // check what happens if the delimiter cannot be found
@@ -50,7 +52,7 @@ int main(){
 
     decryptAESKey("./Receiver/enc_AES_key.bin", "./Receiver/receiver_priv_key.pem");
 
-    decryptMessage("./Receiver/msg.txt.enc", "./Receiver/dec_AES_key&iv.bin");
+    //decryptMessage("./Receiver/msg.txt.enc", "./Receiver/dec_AES_key&iv.bin");
 
     return 0;
 }
@@ -172,83 +174,207 @@ int authenticateHMAC(const char* keyFile, const char* inputFile, const char* giv
 }
 
 
-int decryptAESKey(const char* keyToDecrypt, const char* privKeyFile){
+
+
+
+
+
+int decryptAESKey(const char* keyToDecrypt, const char* privateKeyFile) {
     // Open private key file
-    FILE* rsa_fp = fopen(privKeyFile, "r");
-    if(rsa_fp == nullptr){
+    FILE* rsa_fp = fopen(privateKeyFile, "r");
+    if (rsa_fp == nullptr) {
         printf("Error: Cannot open private key file.\n");
-        fclose(rsa_fp);
         return -1;
     }
 
     // Read private key
     RSA* rsa = PEM_read_RSAPrivateKey(rsa_fp, NULL, NULL, NULL);
     fclose(rsa_fp);
-    if(rsa == nullptr){
+    if (rsa == nullptr) {
         printf("Error: Cannot read private key from file.\n");
         RSA_free(rsa);
         return -1;
     }
-    
-    // Read encrypted AES key file
-    std::ifstream enc_AES_stream(keyToDecrypt, std::ios::binary);
-    if(!enc_AES_stream){
-        printf("Error: Failed to read encrypted AES key.\n");
-        enc_AES_stream.close();
-        return -1;
-    }
-    
-    
-    
-    // Convert keyToDecrypt to an unsigned char to pass into RSA_private_decrypt() func
-    int encryptedLength = getFileSize(keyToDecrypt); // length of AES key; SHOULD just be EVP_MAX_KEY_LENGTH
-    // if(encryptedLength <= 0){
-    //     printf("Error: Invalid encryption file.\n");
-    //     enc_AES_stream.close();
-    //     return -1;
-    // }
-    unsigned char* keyToDecrypt_ui = new unsigned char[encryptedLength];
-    enc_AES_stream.read(reinterpret_cast<char*>(keyToDecrypt_ui), encryptedLength);
-    enc_AES_stream.close();
 
-    // Create temp var for decrypted AES key
-    unsigned char* retrieved_AES_key_iv = new unsigned char[encryptedLength]; //size may still not be right since encrypted file != decrypted
-    memset(retrieved_AES_key_iv, 0, encryptedLength); 
-    
-    // unsigned char* retrieved_AES_key_iv = new unsigned char[RSA_size(rsa)];
-    // memset(retrieved_AES_key_iv, 0, RSA_size(rsa)); 
-    // // RSA_Size might not be right since AES file has key AND IV
-    
-    int decryptedLength = RSA_private_decrypt(encryptedLength, keyToDecrypt_ui, retrieved_AES_key_iv, rsa, RSA_PKCS1_OAEP_PADDING);
-    ////^ MAY BE WRONG
-    
-
-    // \/ CONDITION MAY BE WRONG
-    if(decryptedLength == -1){ // or the length < 0 or =-1
-        printf("Error: Could not decrypt AES key.\n");
+    // Read encrypted file
+    std::ifstream inputFile(keyToDecrypt, std::ios::binary);
+    if (!inputFile) {
+        printf("Error: Could not open input file.\n");
         RSA_free(rsa);
         return -1;
     }
 
-    // Write decrypted AES key to file
-    /// May need tochange to stream version to convert unsigned char back to const char
-    FILE* dec_AES_file = fopen("./Receiver/dec_AES_key&iv.bin", "wb");
-    fwrite(retrieved_AES_key_iv, 1, decryptedLength, dec_AES_file); // encrypted length may not be what the decrypted length should be?!
-    //// IV IS LEFT OUT WHEN WRITTEN TO dec_AES_key&iv.bin
+    // Determine the file size
+    inputFile.seekg(0, std::ios::end);
+    int fileSize = inputFile.tellg();
+    inputFile.seekg(0, std::ios::beg);
 
+    // Read the encrypted data into a vector
+    std::vector<unsigned char> encryptedData(fileSize);
+    inputFile.read(reinterpret_cast<char*>(encryptedData.data()), fileSize);
+    inputFile.close();
 
+    // Perform RSA decryption
+    unsigned char* decryptedData = new unsigned char[RSA_size(rsa)];
+    int decryptedLength = RSA_private_decrypt(fileSize, encryptedData.data(), decryptedData, rsa, RSA_PKCS1_OAEP_PADDING);
+    if (decryptedLength <= 0) {
+        printf("Error: RSA decryption failed.\n");
+        RSA_free(rsa);
+        delete[] decryptedData;
+        return -1;
+    }
 
+    // Write the decrypted result to an output file
+    FILE* outputFile = fopen("./Receiver/dec_AES_key&iv.bin", "wb");
+    fwrite(decryptedData, 1, decryptedLength, outputFile);
+    fclose(outputFile);
 
-
-    fclose(dec_AES_file);
-
-
-    // Delete char[] vars?
-
+    delete[] decryptedData;
     RSA_free(rsa);
-
     return 0;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+// int decryptAESKey(const char* keyToDecrypt, const char* privKeyFile){
+//     // Open private key file
+//     FILE* rsa_fp = fopen(privKeyFile, "r");
+//     if(rsa_fp == nullptr){
+//         printf("Error: Cannot open private key file.\n");
+//         fclose(rsa_fp);
+//         return -1;
+//     }
+
+//     // Read private key
+//     RSA* rsa = PEM_read_RSAPrivateKey(rsa_fp, NULL, NULL, NULL);
+//     fclose(rsa_fp);
+//     if(rsa == nullptr){
+//         printf("Error: Cannot read private key from file.\n");
+//         RSA_free(rsa);
+//         return -1;
+//     }
+    
+//     // Read encrypted AES key file
+//     std::ifstream enc_AES_stream(keyToDecrypt, std::ios::binary);
+//     if(!enc_AES_stream){
+//         printf("Error: Failed to read encrypted AES key.\n");
+//         enc_AES_stream.close();
+//         RSA_free(rsa);
+//         return -1;
+//     }
+    
+//     const char* delimiter = "\n!!!!!\n";
+//     size_t delimiterSize = strlen(delimiter);
+    
+//     // Convert keyToDecrypt to an unsigned char to pass into RSA_private_decrypt() func
+//     int encryptedLength = getFileSize(keyToDecrypt); // length of AES key; SHOULD just be EVP_MAX_KEY_LENGTH
+//     // if(encryptedLength <= 0){
+//     //     printf("Error: Invalid encryption file.\n");
+//     //     enc_AES_stream.close();
+//     //     RSA_free(rsa);
+//     //     return -1;
+//     // }
+
+//     // enc_AES_stream.seekg(0, std::ios::end);
+//     // int encryptedLength2 = enc_AES_stream.tellg();
+//     // enc_AES_stream.seekg(0, std::ios::beg);
+
+//     printf("l1: %d\n", encryptedLength);
+//     // printf("l2: %d\n", encryptedLength2);
+
+
+
+//     unsigned char* keyToDecrypt_ui = new unsigned char[encryptedLength];
+//     memset(keyToDecrypt_ui, 0, encryptedLength); // LENGTH MAY STILL BE WRONG
+//     enc_AES_stream.read(reinterpret_cast<char*>(keyToDecrypt_ui), encryptedLength);
+//     enc_AES_stream.close();
+
+//     // Create temp var for decrypted AES key
+//     unsigned char* retrieved_AES_key_iv = new unsigned char[encryptedLength]; //size may still not be right since encrypted file != decrypted
+//     memset(retrieved_AES_key_iv, 0, encryptedLength); 
+    
+//     // unsigned char* retrieved_AES_key_iv = new unsigned char[RSA_size(rsa)];
+//     // memset(retrieved_AES_key_iv, 0, RSA_size(rsa)); 
+//     // // RSA_Size might not be right since AES file has key AND IV
+    
+//     int decryptedLength = RSA_private_decrypt(encryptedLength, keyToDecrypt_ui, retrieved_AES_key_iv, rsa, RSA_PKCS1_OAEP_PADDING);
+//     ////^ MAY BE WRONG
+    
+
+//     // \/ CONDITION MAY BE WRONG
+//     if(decryptedLength == -1){ // or the length < 0 or =-1
+//         printf("Error: Could not decrypt AES key.\n");
+//         RSA_free(rsa);
+//         return -1;
+//     }
+
+//     unsigned char* dec_AES_key_buf = retrieved_AES_key_iv;
+//     unsigned char* delimiter_buf = retrieved_AES_key_iv + EVP_MAX_KEY_LENGTH;
+//     unsigned char* dec_iv_buf = delimiter_buf + delimiterSize;
+
+//     FILE* dec_AES_key_file = fopen("./Receiver/dec_AES_key.bin", "wb");
+//     fwrite(dec_AES_key_buf, 1, EVP_MAX_KEY_LENGTH, dec_AES_key_file);
+//     fclose(dec_AES_key_file);
+
+//     FILE* iv_file = fopen("./Receiver/dec_iv.bin", "wb");
+//     fwrite(dec_iv_buf, 1, EVP_MAX_IV_LENGTH, iv_file);
+//     fclose(iv_file);
+
+
+
+
+//     // // Write decrypted AES key to file
+//     // /// May need tochange to stream version to convert unsigned char back to const char
+//     // FILE* dec_AES_file = fopen("./Receiver/dec_AES_key&iv.bin", "wb");
+//     // fwrite(retrieved_AES_key_iv, 1, decryptedLength, dec_AES_file); // encrypted length may not be what the decrypted length should be?!
+//     // //// IV IS LEFT OUT WHEN WRITTEN TO dec_AES_key&iv.bin
+//     // fclose(dec_AES_file);
+
+//     // // Separate the decrypted data into the AES key, delimiter, and IV
+//     // unsigned char* decrypted_AES_key = retrieved_AES_key_iv;
+//     // unsigned char* delimiter = retrieved_AES_key_iv + EVP_MAX_KEY_LENGTH;
+//     // unsigned char* decrypted_IV = delimiter + strlen("\n!!!!!\n");
+
+//     // // Write decrypted AES key to file
+//     // FILE* dec_AES_key = fopen("./Receiver/dec_AES_key.bin", "wb");
+//     // fwrite(decrypted_AES_key, 1, EVP_MAX_KEY_LENGTH, dec_AES_key);
+//     // fclose(dec_AES_key);
+
+//     // // Write decrypted IV to file
+//     // FILE* iv_file = fopen("./Receiver/dec_iv.bin", "wb");
+//     // fwrite(decrypted_IV, 1, EVP_MAX_IV_LENGTH, iv_file);
+//     // fclose(iv_file);
+
+
+//     // // Write decrypted AES key to file
+//     // FILE* dec_AES_key = fopen("./Receiver/dec_AES_key.bin", "wb");
+//     // fwrite(retrieved_AES_key_iv, 1, EVP_MAX_KEY_LENGTH, dec_AES_key);
+//     // fclose(dec_AES_key);
+
+//     // FILE* iv_file = fopen("./Receiver/dec_iv.bin", "wb");
+//     // fwrite(retrieved_AES_key_iv + EVP_MAX_KEY_LENGTH, 1, EVP_MAX_IV_LENGTH, iv_file);
+//     // fclose(iv_file);
+
+
+
+    
+
+
+//     // Delete char[] vars?
+
+//     RSA_free(rsa);
+
+//     return 0;
+// }
 
 int decryptMessage(const char* msgToDecrypt, const char* aes_keyFile){
     // Split aes_keyFile into AES key and IV
