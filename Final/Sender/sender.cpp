@@ -149,8 +149,13 @@ int encrypt_AES_key(const char* AES_file, const char* receiver_public_key){
         printf("Cannot find receiver's public key. AES key encryption with RSA public key failed.");
         fclose(rsa_fp);
         return -1;
+    } else{
+        printf("Found pub key file.\n");
     }
-    RSA* rsa = PEM_read_RSA_PUBKEY(rsa_fp, NULL, NULL, NULL);
+
+    RSA* rsa = PEM_read_RSAPublicKey(rsa_fp, NULL, NULL, NULL);
+
+    // PEM_read_RSA_PUBKEY(rsa_fp, NULL, NULL, NULL); // WRONG FUNCTION
     ERR_print_errors_fp(stderr);
     fclose(rsa_fp);
 

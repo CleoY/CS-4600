@@ -1,5 +1,6 @@
 #include <openssl/rsa.h>
 #include <openssl/pem.h>
+#include <openssl/rsa.h>
 
 // g++ -o keyGeneration generateKeyPairs.cpp -I/usr/local/opt/openssl@1.1/include -L/usr/local/opt/openssl@1.1/lib -lssl -lcrypto
 // ./keyGeneration
@@ -18,8 +19,13 @@ int main(){
 int generateRSAKeyPair(int option){
     const char* privateFile;
     const char* publicFile;
-    RSA *rsa = RSA_generate_key(2048, RSA_F4, nullptr, nullptr);
-    
+    RSA *rsa = RSA_new();
+
+    BIGNUM* bn = BN_new();
+    BN_set_word(bn, RSA_F4);
+
+    RSA_generate_key_ex(rsa, 2048, bn, nullptr);
+
     // option 1 is generate the sender's key pair
     if(option == 1){
         privateFile = "./Sender/sender_priv_key.pem";
@@ -36,11 +42,13 @@ int generateRSAKeyPair(int option){
     PEM_write_RSAPrivateKey(fp, rsa, nullptr, nullptr, 0, nullptr, nullptr);
     fclose(fp);
 
+
     // Write public key to pem file. 
     fp = fopen(publicFile, "wb");
     PEM_write_RSAPublicKey(fp, rsa);
     fclose(fp);
 
+    BN_free(bn);
     RSA_free(rsa);
     
     return 0;
