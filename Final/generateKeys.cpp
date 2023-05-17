@@ -60,7 +60,7 @@ int generateRSAKeyPair(int option){
 
 
 int generateHMACKey(){
-    int key_size = 32;
+    int key_size = EVP_MAX_KEY_LENGTH;
     unsigned char key[key_size];
     
     // Randomly generate HMAC key

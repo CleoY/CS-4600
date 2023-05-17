@@ -6,6 +6,8 @@
 #include <cstring>
 #include <openssl/rand.h>
 #include <fstream>
+#include <openssl/evp.h>
+#include <openssl/hmac.h>
 
 // Run from overall Final folder
 // g++ -o Sender/senderOut Sender/sender.cpp -I/usr/local/opt/openssl@1.1/include -L/usr/local/opt/openssl@1.1/lib -lssl -lcrypto
@@ -28,7 +30,7 @@
  * Generate AES key for message
  * Encrypt message with AES key
  * Encrypt AES KEY with RECEIVER'S RSA PUBLIC key
- * Authenticate msg with MAC and append MAC to msg
+ * Authenticate WHOLE msg with MAC and append MAC to msg
  * Send encrypted messaged with encrypted AES key and MAC to "open channel"
  * 
 */
@@ -36,7 +38,8 @@
 int generateAESKey();
 int encryptMessage(const char* msg, const char* AES_file);
 int encrypt_AES_key(const char* AES_file, const char* receiver_public_key);
-int encrypt_AES_key2(const char* AES_file, const char* receiver_public_key);
+int combineFiles(const char* file1, const char* file2, const char* delimiter, const char* outputFile);
+int generateHMAC(const char* HMAC_key_file);
 
 int main(){
     generateAESKey();
@@ -44,8 +47,12 @@ int main(){
     // What happens when the msg does not exist?? Check by decrypting!!
     encryptMessage("./Sender/message.txt", "./Sender/aes_key.bin");
 
-    //encrypt_AES_key2("./Sender/aes_key.bin", "receiver_public_key.pem");
     encrypt_AES_key("./Sender/aes_key.bin", "receiver_public_key.pem");
+
+    // Combine encrypted message with encrypted AES key file with \n~~~~~\n as a delimiter. 
+    combineFiles("./Sender/encrypted.txt.enc", "./Sender/encrypted_AES_key.bin", "\n~~~~~\n", "./Sender/enc_msg_and_key.bin");
+
+    generateHMAC("./Sender/HMAC_key.bin");
 
     return 0;
 }
@@ -53,7 +60,7 @@ int main(){
 
 int generateAESKey(){ // Generate 256-bit AES key
     unsigned char AES_key[EVP_MAX_KEY_LENGTH];
-    int AES_length = 32; // 32 bytes
+    int AES_length = EVP_MAX_KEY_LENGTH; // 32 bytes
 
     // Set key to 0 to ensure buffer is clear of any previous data
     memset(AES_key, 0, EVP_MAX_KEY_LENGTH); 
@@ -159,7 +166,7 @@ int encrypt_AES_key(const char* AES_file, const char* receiver_public_key){
     fclose(aes_fp);
 
     // Initialize encrypted AES key variable and RSA key size, AES key size, and encrypted key size temp variables
-    int aes_key_size = 32;
+    int aes_key_size = EVP_MAX_KEY_LENGTH;
     int rsa_key_size = RSA_size(rsa); // ERROR HERE
     unsigned char encrypted_AES_key[rsa_key_size];
     memset(encrypted_AES_key, 0, rsa_key_size); 
@@ -174,6 +181,28 @@ int encrypt_AES_key(const char* AES_file, const char* receiver_public_key){
 
     // Release temp vars
     RSA_free(rsa);
+
+    return 0;
+}
+
+
+int combineFiles(const char* file1, const char* file2, const char* delimiter, const char* outputFile){
+    std::ifstream input1(file1, std::ios::binary);
+    std::ifstream input2(file2, std::ios::binary);
+    std::ofstream output(outputFile, std::ios::binary);
+    
+    // Append input1, delimiter, and input2 to output file
+    output << input1.rdbuf() << delimiter << input2.rdbuf();
+    
+    input1.close();
+    input2.close();
+    output.close();
+
+    return 0;
+}
+
+
+int generateHMAC(const char* HMAC_key_file){
 
     return 0;
 }
