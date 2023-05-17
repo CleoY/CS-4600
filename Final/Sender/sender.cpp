@@ -41,8 +41,7 @@ int encrypt_AES_key(const char* AES_file, const char* receiver_public_key);
 int combineFiles(const char* file1, const char* file2, const char* delimiter, const char* outputFile);
 int getFileSize(const char* fileName);
 int generateHMAC(const char* keyFile, const char* inputFile);
-//int generateHMAC(const char* HMAC_key_file, int key_size, const char* data, int dataLength, unsigned char* hmac);
-//int generateHMAC(const char* HMAC_key_file);
+
 
 int main(){
     generateAESKey();
@@ -59,6 +58,10 @@ int main(){
     //printf("File size: %d", fileSize);
 
     generateHMAC("./Sender/HMAC_key.bin", "./Sender/enc_msg_and_key.bin");
+
+    // Combine encrypted message and key with HMAC and place complete file in "open channel"
+    combineFiles("./Sender/enc_msg_and_key.bin", "HMAC.bin", "\n`````\n", "full_package.bin");
+
 
     return 0;
 }
@@ -270,14 +273,3 @@ int generateHMAC(const char* keyFile, const char* inputFile){
 
     return 0;
 }
-
-
-// int generateHMAC(const char* HMAC_key_file, int key_size, const char* data, int dataLength, unsigned char* hmac){
-//     HMAC_CTX* ctx = HMAC_CTX_new();
-//     HMAC_Init_ex(ctx, HMAC_key_file, key_size, EVP_sha256(), NULL);
-//     HMAC_Update(ctx, data, dataLength);
-//     int hmacLength;
-//     HMAC_Final(ctx, hmac, &hmacLength);
-//     HMAC_CTX_free(ctx);
-//     return 0;
-// }
