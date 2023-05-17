@@ -37,9 +37,11 @@
 int getFileSize(const char* fileName);
 int splitFile(const char* fileName, const char* delimiter, const char* output1, const char* output2);
 int authenticateHMAC(const char* keyFile, const char* inputFile, const char* given_HMAC_file);
-int decryptAESKey(const char* keyToDecrypt, const char* privKeyFile);
+//int decryptAESKey(const char* keyToDecrypt, const char* privKeyFile);
 //int decryptMessage(const char* msgToDecrypt, const char* aes_keyFile);
-int decryptAESKey(const char* keyToDecrypt, const char* privateKeyFile);
+//int decryptAESKey(const char* keyToDecrypt, const char* privateKeyFile);
+//int decryptFile(const char* inputFile, const char* privateKeyFile, const char* outputFile);
+int decryptFile(const char* inputFile, const char* privateKeyFile, const char* outputFile);
 
 int main(){
     // check what happens if the delimiter cannot be found
@@ -50,7 +52,7 @@ int main(){
 
     splitFile("./Receiver/encrypted_msg_and_key.bin", "\n~~~~~\n", "./Receiver/msg.txt.enc", "./Receiver/enc_AES_key.bin");
 
-    decryptAESKey("./Receiver/enc_AES_key.bin", "./Receiver/receiver_priv_key.pem");
+    decryptFile("./Receiver/enc_AES_key.bin", "./Receiver/receiver_priv_key.pem", "./Receiver/tempoutput.bin");
 
     //decryptMessage("./Receiver/msg.txt.enc", "./Receiver/dec_AES_key&iv.bin");
 
@@ -179,60 +181,180 @@ int authenticateHMAC(const char* keyFile, const char* inputFile, const char* giv
 
 
 
-int decryptAESKey(const char* keyToDecrypt, const char* privateKeyFile) {
-    // Open private key file
-    FILE* rsa_fp = fopen(privateKeyFile, "r");
-    if (rsa_fp == nullptr) {
-        printf("Error: Cannot open private key file.\n");
-        return -1;
-    }
+int decryptFile(const char* inputFile, const char* privateKeyFile, const char* outputFile) {
+    // Read private key from file
+    std::ifstream privateKeyStream(privateKeyFile);
+    std::string privateKey((std::istreambuf_iterator<char>(privateKeyStream)),
+                           std::istreambuf_iterator<char>());
+    privateKeyStream.close();
 
-    // Read private key
-    RSA* rsa = PEM_read_RSAPrivateKey(rsa_fp, NULL, NULL, NULL);
-    fclose(rsa_fp);
-    if (rsa == nullptr) {
+    // Load private key into RSA structure
+    BIO* privateKeyBio = BIO_new_mem_buf(privateKey.data(), -1);
+    RSA* rsaPrivateKey = PEM_read_bio_RSAPrivateKey(privateKeyBio, NULL, NULL, NULL);
+    BIO_free(privateKeyBio);
+
+    if (rsaPrivateKey == nullptr) {
         printf("Error: Cannot read private key from file.\n");
-        RSA_free(rsa);
         return -1;
     }
 
     // Read encrypted file
-    std::ifstream inputFile(keyToDecrypt, std::ios::binary);
-    if (!inputFile) {
-        printf("Error: Could not open input file.\n");
-        RSA_free(rsa);
+    std::ifstream encryptedFileStream(inputFile, std::ios::binary);
+    std::string encryptedData((std::istreambuf_iterator<char>(encryptedFileStream)),
+                              std::istreambuf_iterator<char>());
+    encryptedFileStream.close();
+
+    // Find the delimiter position
+    size_t delimiterPos = encryptedData.find("\n!!!!!\n");
+    if (delimiterPos == std::string::npos) {
+        printf("Error: Invalid encrypted file format.\n");
+        RSA_free(rsaPrivateKey);
         return -1;
     }
 
-    // Determine the file size
-    inputFile.seekg(0, std::ios::end);
-    int fileSize = inputFile.tellg();
-    inputFile.seekg(0, std::ios::beg);
+    // Extract the encrypted AES key, delimiter, and IV
+    std::string encryptedAESKey = encryptedData.substr(0, delimiterPos);
+    std::string delimiter = "\n!!!!!\n";
+    std::string iv = encryptedData.substr(delimiterPos + delimiter.length());
 
-    // Read the encrypted data into a vector
-    std::vector<unsigned char> encryptedData(fileSize);
-    inputFile.read(reinterpret_cast<char*>(encryptedData.data()), fileSize);
-    inputFile.close();
+    // Decrypt the AES key using RSA private key
+    std::vector<unsigned char> decryptedAESKey(RSA_size(rsaPrivateKey));
+    int decryptedKeyLength = RSA_private_decrypt(static_cast<int>(encryptedAESKey.length()),
+                                                 reinterpret_cast<const unsigned char*>(encryptedAESKey.data()),
+                                                 decryptedAESKey.data(),
+                                                 rsaPrivateKey,
+                                                 RSA_PKCS1_OAEP_PADDING);
 
-    // Perform RSA decryption
-    unsigned char* decryptedData = new unsigned char[RSA_size(rsa)];
-    int decryptedLength = RSA_private_decrypt(fileSize, encryptedData.data(), decryptedData, rsa, RSA_PKCS1_OAEP_PADDING);
-    if (decryptedLength <= 0) {
-        printf("Error: RSA decryption failed.\n");
-        RSA_free(rsa);
-        delete[] decryptedData;
+    RSA_free(rsaPrivateKey);
+
+    if (decryptedKeyLength == -1) {
+        printf("Error: Could not decrypt the AES key.\n");
         return -1;
     }
 
-    // Write the decrypted result to an output file
-    FILE* outputFile = fopen("./Receiver/dec_AES_key&iv.bin", "wb");
-    fwrite(decryptedData, 1, decryptedLength, outputFile);
-    fclose(outputFile);
-
-    delete[] decryptedData;
-    RSA_free(rsa);
+    // Write the decrypted data to the output file
+    std::ofstream outputFileStream(outputFile, std::ios::binary);
+    outputFileStream.write(reinterpret_cast<const char*>(decryptedAESKey.data()), decryptedKeyLength);
+    outputFileStream.write(delimiter.data(), delimiter.length());
+    outputFileStream.write(iv.data(), iv.length());
+    outputFileStream.close();
     return 0;
 }
+
+
+
+
+
+
+
+
+
+// int decryptFile(const char* inputFile, const char* privateKeyFile, const char* outputFile) {
+//     // Read private key from file
+//     std::ifstream privateKeyStream(privateKeyFile);
+//     std::string privateKey((std::istreambuf_iterator<char>(privateKeyStream)),
+//                            std::istreambuf_iterator<char>());
+//     privateKeyStream.close();
+
+//     // Load private key into RSA structure
+//     BIO* privateKeyBio = BIO_new_mem_buf(privateKey.data(), -1);
+//     RSA* rsaPrivateKey = PEM_read_bio_RSAPrivateKey(privateKeyBio, NULL, NULL, NULL);
+//     BIO_free(privateKeyBio);
+
+//     if (rsaPrivateKey == nullptr) {
+//         printf("Error: Cannot read private key from file.\n");
+//         return -1;
+//     }
+
+//     // Read encrypted file
+//     std::ifstream encryptedFileStream(inputFile, std::ios::binary);
+//     std::vector<unsigned char> encryptedData((std::istreambuf_iterator<char>(encryptedFileStream)),
+//                                              std::istreambuf_iterator<char>());
+//     encryptedFileStream.close();
+
+//     // Decrypt the encrypted data using RSA private key
+//     std::vector<unsigned char> decryptedData(RSA_size(rsaPrivateKey));
+//     int decryptedLength = RSA_private_decrypt(static_cast<int>(encryptedData.size()),
+//                                               encryptedData.data(),
+//                                               decryptedData.data(),
+//                                               rsaPrivateKey,
+//                                               RSA_PKCS1_OAEP_PADDING);
+
+//     RSA_free(rsaPrivateKey);
+
+//     if (decryptedLength == -1) {
+//         printf("Error: Could not decrypt the file.\n");
+//         return -1;
+//     }
+
+//     // Write the decrypted data to the output file
+//     std::ofstream outputFileStream(outputFile, std::ios::binary);
+//     outputFileStream.write(reinterpret_cast<const char*>(decryptedData.data()), decryptedLength);
+//     outputFileStream.close();
+//     return 0;
+// }
+
+
+
+
+
+
+
+
+// int decryptAESKey(const char* keyToDecrypt, const char* privateKeyFile) {
+//     // Open private key file
+//     FILE* rsa_fp = fopen(privateKeyFile, "r");
+//     if (rsa_fp == nullptr) {
+//         printf("Error: Cannot open private key file.\n");
+//         return -1;
+//     }
+
+//     // Read private key
+//     RSA* rsa = PEM_read_RSAPrivateKey(rsa_fp, NULL, NULL, NULL);
+//     fclose(rsa_fp);
+//     if (rsa == nullptr) {
+//         printf("Error: Cannot read private key from file.\n");
+//         RSA_free(rsa);
+//         return -1;
+//     }
+
+//     // Read encrypted file
+//     std::ifstream inputFile(keyToDecrypt, std::ios::binary);
+//     if (!inputFile) {
+//         printf("Error: Could not open input file.\n");
+//         RSA_free(rsa);
+//         return -1;
+//     }
+
+//     // Determine the file size
+//     inputFile.seekg(0, std::ios::end);
+//     int fileSize = inputFile.tellg();
+//     inputFile.seekg(0, std::ios::beg);
+
+//     // Read the encrypted data into a vector
+//     std::vector<unsigned char> encryptedData(fileSize);
+//     inputFile.read(reinterpret_cast<char*>(encryptedData.data()), fileSize);
+//     inputFile.close();
+
+//     // Perform RSA decryption
+//     unsigned char* decryptedData = new unsigned char[RSA_size(rsa)];
+//     int decryptedLength = RSA_private_decrypt(fileSize, encryptedData.data(), decryptedData, rsa, RSA_PKCS1_OAEP_PADDING);
+//     if (decryptedLength <= 0) {
+//         printf("Error: RSA decryption failed.\n");
+//         RSA_free(rsa);
+//         delete[] decryptedData;
+//         return -1;
+//     }
+
+//     // Write the decrypted result to an output file
+//     FILE* outputFile = fopen("./Receiver/dec_AES_key&iv.bin", "wb");
+//     fwrite(decryptedData, 1, decryptedLength, outputFile);
+//     fclose(outputFile);
+
+//     delete[] decryptedData;
+//     RSA_free(rsa);
+//     return 0;
+// }
 
 
 
