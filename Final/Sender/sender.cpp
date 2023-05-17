@@ -156,7 +156,7 @@ int encryptMessage(const char* msg, const char* AES_file){
 
 int encrypt_AES_key(const char* AES_file, const char* receiver_public_key){
     // Get receiver's public key
-    FILE *rsa_fp = fopen(receiver_public_key, "r");
+    FILE* rsa_fp = fopen(receiver_public_key, "r");
     if(rsa_fp == nullptr){
         printf("Cannot find receiver's public key. AES key encryption with RSA public key failed.");
         fclose(rsa_fp);

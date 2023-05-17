@@ -3,6 +3,7 @@
         "*.java": "java",
         "ios": "cpp",
         "iosfwd": "cpp",
-        "fstream": "cpp"
+        "fstream": "cpp",
+        "cstring": "cpp"
     }
 }

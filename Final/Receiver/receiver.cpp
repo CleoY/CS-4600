@@ -44,6 +44,9 @@ int main(){
     
     authenticateHMAC("./Receiver/HMAC_key.bin", "./Receiver/encrypted_msg_and_key.bin", "./Receiver/parsed_HMAC.bin");
 
+    splitFile("./Receiver/encrypted_msg_and_key.bin", "\n~~~~~\n", "./Receiver/msg.txt.enc", "./Receiver/enc_AES_key.bin");
+
+
 
     return 0;
 }
@@ -161,5 +164,36 @@ int authenticateHMAC(const char* keyFile, const char* inputFile, const char* giv
         printf("Warning: HMAC's do no match.\n");
     }
 
+    return 0;
+}
+
+
+int decryptAESKey(const char* keyToDecrypt, const char* privKeyFile){
+    FILE* rsa_fp = fopen(privKeyFile, "r");
+    if(rsa_fp == nullptr){
+        printf("Error: Cannot open private key file.\n");
+        fclose(rsa_fp);
+        return -1;
+    }
+    RSA* rsa = PEM_read_RSAPrivateKey(rsa_fp, NULL, NULL, NULL);
+    fclose(rsa_fp);
+
+    if(rsa == nullptr){
+        printf("Error: Cannot read private key from file.\n");
+        return -1;
+    }
+    
+    
+    
+    // Create temp var for decrypted AES key
+    unsigned char retrieved_AES_key[EVP_MAX_KEY_LENGTH];
+    memset(retrieved_AES_key, 0, EVP_MAX_KEY_LENGTH); 
+
+
+    return 0;
+}
+
+int decryptMessage(const char* msgToDecrypt, const char* aes_keyFile){
+    
     return 0;
 }
