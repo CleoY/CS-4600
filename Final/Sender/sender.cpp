@@ -63,7 +63,6 @@ int main(){
     // Combine encrypted message and key with HMAC and place complete file in "open channel"
     combineFiles("./Sender/enc_msg_and_key.bin", "./Sender/HMAC.bin", "\n`````\n", "full_package.bin");
 
-
     return 0;
 }
 
@@ -115,14 +114,14 @@ int encryptMessage(const char* msg, const char* AES_file){
     memset(iv, 0, EVP_MAX_IV_LENGTH);
 
     // Split AES_file into AES key and IV
-    int result = splitFile(AES_file, "\n!!!!!\n", "AES_key.bin", "IV.bin");
+    int result = splitFile(AES_file, "\n!!!!!\n", "./Sender/AES_key.bin", "./Sender/IV.bin");
     if(result != 0){
         printf("Error: could not split file into AES key and IV.\n");
         return -1;
     }
 
     // Open file with AES key
-    FILE *aes_fp = fopen("AES_key.bin", "rb");    
+    FILE *aes_fp = fopen("./Sender/AES_key.bin", "rb");    
     if(aes_fp == nullptr){
         printf("The AES key does not exist. Please generate a key before encrypting any messages.\n");
         fclose(aes_fp);
@@ -132,7 +131,7 @@ int encryptMessage(const char* msg, const char* AES_file){
     fclose(aes_fp);
 
     // Get IV from file
-    FILE* iv_fp = fopen("IV.bin", "rb");
+    FILE* iv_fp = fopen("./Sender/IV.bin", "rb");
     if(iv_fp == nullptr){
         printf("The IV does not exist. Please generate an IV before encrypting any messages.\n");
         fclose(iv_fp);

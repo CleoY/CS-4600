@@ -37,7 +37,7 @@ int getFileSize(const char* fileName);
 int splitFile(const char* fileName, const char* delimiter, const char* output1, const char* output2);
 int authenticateHMAC(const char* keyFile, const char* inputFile, const char* given_HMAC_file);
 int decryptAESKey(const char* keyToDecrypt, const char* privKeyFile);
-
+int decryptMessage(const char* msgToDecrypt, const char* aes_keyFile);
 
 int main(){
     // check what happens if the delimiter cannot be found
@@ -49,6 +49,8 @@ int main(){
     splitFile("./Receiver/encrypted_msg_and_key.bin", "\n~~~~~\n", "./Receiver/msg.txt.enc", "./Receiver/enc_AES_key.bin");
 
     decryptAESKey("./Receiver/enc_AES_key.bin", "./Receiver/receiver_priv_key.pem");
+
+    // //decryptMessage("./Receiver/msg.txt.enc", "./Receiver/dec_AES_key.bin");
 
     return 0;
 }
@@ -206,11 +208,14 @@ int decryptAESKey(const char* keyToDecrypt, const char* privKeyFile){
     enc_AES_stream.close();
 
     // Create temp var for decrypted AES key
-    unsigned char* retrieved_AES_key = new unsigned char[RSA_size(rsa)];
-    memset(retrieved_AES_key, 0, RSA_size(rsa)); 
+    unsigned char* retrieved_AES_key_iv = new unsigned char[encryptedLength]; //size may still not be right since encrypted file != decrypted
+    memset(retrieved_AES_key_iv, 0, encryptedLength); 
     
+    // unsigned char* retrieved_AES_key_iv = new unsigned char[RSA_size(rsa)];
+    // memset(retrieved_AES_key_iv, 0, RSA_size(rsa)); 
+    // // RSA_Size might not be right since AES file has key AND IV
     
-    int decryptedLength = RSA_private_decrypt(encryptedLength, keyToDecrypt_ui, retrieved_AES_key, rsa, RSA_PKCS1_OAEP_PADDING);
+    int decryptedLength = RSA_private_decrypt(encryptedLength, keyToDecrypt_ui, retrieved_AES_key_iv, rsa, RSA_PKCS1_OAEP_PADDING);
     ////^ MAY BE WRONG
     
 
@@ -222,8 +227,8 @@ int decryptAESKey(const char* keyToDecrypt, const char* privKeyFile){
 
     // Write decrypted AES key to file
     /// May need tochange to stream version to convert unsigned char back to const char
-    FILE* dec_AES_file = fopen("./Receiver/dec_AES_key.bin", "wb");
-    fwrite(retrieved_AES_key, 1, EVP_MAX_KEY_LENGTH, dec_AES_file);
+    FILE* dec_AES_file = fopen("./Receiver/dec_AES_key&iv.bin", "wb");
+    fwrite(retrieved_AES_key_iv, 1, EVP_MAX_KEY_LENGTH, dec_AES_file);
     fclose(dec_AES_file);
 
 
@@ -235,6 +240,85 @@ int decryptAESKey(const char* keyToDecrypt, const char* privKeyFile){
 }
 
 int decryptMessage(const char* msgToDecrypt, const char* aes_keyFile){
+    // Split aes_keyFile into AES key and IV
+    int result = splitFile(aes_keyFile, "\n!!!!!\n", "./Receiver/AES_key.bin", "./Receiver/IV.bin");
+    if(result != 0){
+        printf("Error: could not split file into AES key and IV.\n");
+        return -1;
+    }
     
+    // Open AES key file
+    std::ifstream aes_stream("./Receiver/AES_key.bin", std::ios::binary);
+    if(!aes_stream){
+        printf("Error: Failed to read AES key.\n");
+        aes_stream.close();
+        return -1;
+    }
+
+    // Load AES key into unsigned char
+    int aes_size = getFileSize("./Receiver/AES_key.bin");
+    unsigned char* aes_ui = new unsigned char[aes_size];
+    aes_stream.read(reinterpret_cast<char*>(aes_ui), aes_size);
+    aes_stream.close();
+
+    // Open IV key file
+    std::ifstream iv_stream("./Receiver/IV.bin", std::ios::binary);
+    if(!iv_stream){
+        printf("Error: Failed to IV.\n");
+        iv_stream.close();
+        return -1;
+    }
+
+    // Load IV key into unsigned char
+    int iv_size = getFileSize("./Receiver/IV.bin");
+    unsigned char* iv_ui = new unsigned char[iv_size];
+    iv_stream.read(reinterpret_cast<char*>(iv_ui), iv_size);
+    iv_stream.close();
+
+    // Decryption context
+    EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
+    EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, aes_ui, iv_ui);
+    
+    // Open encrypted message file
+    FILE* enc_msg_fp = fopen(msgToDecrypt, "rb");
+    if(enc_msg_fp == nullptr){
+        printf("Error: Failed to open encrypted message file.\n");
+        EVP_CIPHER_CTX_free(ctx);
+        fclose(enc_msg_fp);
+        return -1;
+    }
+
+    // Create output file for decrypted plaintext message
+    FILE* decrypted_fp = fopen("./Receiver/PLAINTEXT_MSG.txt", "wb");
+    if(decrypted_fp == nullptr){
+        printf("Error: Failed to create resulting plaintext message file.\n");
+        EVP_CIPHER_CTX_free(ctx);
+        fclose(decrypted_fp);
+        return -1;
+    }
+
+    // Initialize temp variables 
+    unsigned char ciphertext[128];
+    unsigned char plaintext[128];
+    memset(ciphertext, 0, 128); 
+    memset(plaintext, 0, 128); 
+    int readBytes = 0;
+    int plaintextLength = 0;
+
+    // Decrypt ciphertext into plaintext blocks; also write to output file
+    while((readBytes = fread(ciphertext, 1, 128, enc_msg_fp)) > 0){
+        EVP_DecryptUpdate(ctx, plaintext, &plaintextLength, ciphertext, readBytes);
+        fwrite(plaintext, 1, plaintextLength, decrypted_fp);
+    }
+
+    // Decrypt final block, if any; also write to output file
+    EVP_DecryptFinal_ex(ctx, plaintext, &plaintextLength);
+    fwrite(plaintext, 1, plaintextLength, decrypted_fp);
+
+    // Free variables
+    EVP_CIPHER_CTX_free(ctx);
+    fclose(enc_msg_fp);
+    fclose(decrypted_fp);
+
     return 0;
 }
