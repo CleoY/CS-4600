@@ -159,21 +159,21 @@ int encryptMessage(const char* msg, const char* AES_file){
     }
 
     // Intialize temp variables for encryption
-    unsigned char plaintext[128];
-    unsigned char ciphertext[128 + EVP_CIPHER_CTX_block_size(ctx)];
-    memset(plaintext, 0, 128); 
-    memset(ciphertext, 0, 128 + EVP_CIPHER_CTX_block_size(ctx)); 
+    unsigned char plaintext[16];
+    unsigned char ciphertext[16 + EVP_CIPHER_CTX_block_size(ctx)];
+    memset(plaintext, 0, 16); 
+    memset(ciphertext, 0, 16 + EVP_CIPHER_CTX_block_size(ctx)); 
     int read_bytes = 0;
     int written_bytes = 0;
 
     // Encrypt message
-    while(input_file.read(reinterpret_cast<char*>(plaintext), 128)){
-        EVP_EncryptUpdate(ctx, ciphertext, &written_bytes, plaintext, 128);
+    while(input_file.read(reinterpret_cast<char*>(plaintext), 16)){
+        EVP_EncryptUpdate(ctx, ciphertext, &written_bytes, plaintext, 16);
         output_file.write(reinterpret_cast<char*>(ciphertext), written_bytes);
-        read_bytes += 128;
+        read_bytes += 16;
     }
 
-    // Encrypt last block if it is not 128 bits long and needs padding
+    // Encrypt last block if it is not 16 bytes long and needs padding
     EVP_EncryptFinal_ex(ctx, ciphertext, &written_bytes);
     output_file.write(reinterpret_cast<char*>(ciphertext), written_bytes);
 

@@ -43,6 +43,7 @@ int authenticateHMAC(const char* keyFile, const char* inputFile, const char* giv
 //int decryptFile(const char* inputFile, const char* privateKeyFile, const char* outputFile);
 //int decryptFile(const char* inputFile, const char* privateKeyFile, const char* outputFile);
 int decryptAESKey(const char* keyToDecrypt, const char* privKeyFile);
+int decryptMessage(const char* msgToDecrypt, const char* aes_keyFile);
 
 int main(){
     // check what happens if the delimiter cannot be found
@@ -55,7 +56,7 @@ int main(){
 
     decryptAESKey("./Receiver/enc_AES_key.bin", "./Receiver/receiver_priv_key.pem");
 
-    //decryptMessage("./Receiver/msg.txt.enc", "./Receiver/dec_AES_key&iv.bin");
+    decryptMessage("./Receiver/msg.txt.enc", "./Receiver/dec_AES_key.bin");
 
     return 0;
 }
@@ -438,45 +439,28 @@ int decryptAESKey(const char* keyToDecrypt, const char* privKeyFile){
 
 
 int decryptMessage(const char* msgToDecrypt, const char* aes_keyFile){
-    // Split aes_keyFile into AES key and IV
-    int result = splitFile(aes_keyFile, "\n!!!!!\n", "./Receiver/AES_key.bin", "./Receiver/IV.bin");
-    if(result != 0){
-        printf("Error: could not split file into AES key and IV.\n");
-        return -1;
-    }
-    
     // Open AES key file
-    std::ifstream aes_stream("./Receiver/AES_key.bin", std::ios::binary);
+    std::ifstream aes_stream(aes_keyFile, std::ios::binary);
     if(!aes_stream){
         printf("Error: Failed to read AES key.\n");
         aes_stream.close();
         return -1;
     }
+    printf("AES stream");
 
     // Load AES key into unsigned char
-    int aes_size = getFileSize("./Receiver/AES_key.bin");
+    int aes_size = getFileSize(aes_keyFile);
     unsigned char* aes_ui = new unsigned char[aes_size];
     aes_stream.read(reinterpret_cast<char*>(aes_ui), aes_size);
     aes_stream.close();
 
-    // Open IV key file
-    std::ifstream iv_stream("./Receiver/IV.bin", std::ios::binary);
-    if(!iv_stream){
-        printf("Error: Failed to IV.\n");
-        iv_stream.close();
-        return -1;
-    }
-
-    // Load IV key into unsigned char
-    // int iv_size = getFileSize("./Receiver/IV.bin");
-    // unsigned char* iv_ui = new unsigned char[iv_size];
-    // iv_stream.read(reinterpret_cast<char*>(iv_ui), iv_size);
-    // iv_stream.close();
+    printf("AES loaded");
 
     // Decryption context
     EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
     EVP_DecryptInit_ex(ctx, EVP_aes_256_ecb(), NULL, aes_ui, NULL); //iv_ui
-    
+    printf("Encrypt ctx");
+
     // Open encrypted message file
     FILE* enc_msg_fp = fopen(msgToDecrypt, "rb");
     if(enc_msg_fp == nullptr){
@@ -485,6 +469,7 @@ int decryptMessage(const char* msgToDecrypt, const char* aes_keyFile){
         fclose(enc_msg_fp);
         return -1;
     }
+    printf("enc open");
 
     // Create output file for decrypted plaintext message
     FILE* decrypted_fp = fopen("./Receiver/PLAINTEXT_MSG.txt", "wb");
@@ -495,16 +480,18 @@ int decryptMessage(const char* msgToDecrypt, const char* aes_keyFile){
         return -1;
     }
 
+    printf("create dec");
+
     // Initialize temp variables 
-    unsigned char ciphertext[128];
-    unsigned char plaintext[128];
-    memset(ciphertext, 0, 128); 
-    memset(plaintext, 0, 128); 
+    unsigned char ciphertext[16];
+    unsigned char plaintext[16];
+    memset(ciphertext, 0, 16); 
+    memset(plaintext, 0, 16); 
     int readBytes = 0;
     int plaintextLength = 0;
 
     // Decrypt ciphertext into plaintext blocks; also write to output file
-    while((readBytes = fread(ciphertext, 1, 128, enc_msg_fp)) > 0){
+    while((readBytes = fread(ciphertext, 1, 16, enc_msg_fp)) > 0){
         EVP_DecryptUpdate(ctx, plaintext, &plaintextLength, ciphertext, readBytes);
         fwrite(plaintext, 1, plaintextLength, decrypted_fp);
     }
@@ -512,6 +499,8 @@ int decryptMessage(const char* msgToDecrypt, const char* aes_keyFile){
     // Decrypt final block, if any; also write to output file
     EVP_DecryptFinal_ex(ctx, plaintext, &plaintextLength);
     fwrite(plaintext, 1, plaintextLength, decrypted_fp);
+
+    printf("write final");
 
     // Free variables
     EVP_CIPHER_CTX_free(ctx);
