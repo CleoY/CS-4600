@@ -48,9 +48,9 @@ int main(){
     generateAESKey();
     
     // What happens when the msg does not exist?? Check by decrypting!!
-    encryptMessage("./Sender/message.txt", "./Sender/aes_key&iv.bin");
+    encryptMessage("./Sender/message.txt", "./Sender/aes_key.bin");
 
-    encrypt_AES_key("./Sender/aes_key&iv.bin", "receiver_public_key.pem");
+    encrypt_AES_key("./Sender/aes_key.bin", "receiver_public_key.pem");
 
     // Combine encrypted message with encrypted AES key file with \n~~~~~\n as a delimiter. 
     combineFiles("./Sender/encrypted.txt.enc", "./Sender/encrypted_AES_key.bin", "\n~~~~~\n", "./Sender/enc_msg_and_key.bin");
@@ -70,10 +70,10 @@ int main(){
 int generateAESKey(){ // Generate 256-bit AES key
     unsigned char AES_key[EVP_MAX_KEY_LENGTH];
     int AES_length = EVP_MAX_KEY_LENGTH; // 32 bytes
-    unsigned char iv[EVP_MAX_IV_LENGTH];
+    //unsigned char iv[EVP_MAX_IV_LENGTH];
     // Set key and iv to 0 to ensure buffer is clear of any previous data
     memset(AES_key, 0, EVP_MAX_KEY_LENGTH); 
-    memset(iv, 0, EVP_MAX_IV_LENGTH);
+    //memset(iv, 0, EVP_MAX_IV_LENGTH);
     
     // Generate random bytes for AES key
     if(RAND_bytes(AES_key, AES_length) != 1){ // Check to ensure AES key was generated successfully
@@ -82,13 +82,13 @@ int generateAESKey(){ // Generate 256-bit AES key
     }
 
     // Initialize IV
-    if(RAND_bytes(iv, EVP_MAX_IV_LENGTH) != 1){
-        printf("Error: Cannot generate IV.\n");
-        return -1;
-    }
+    // if(RAND_bytes(iv, EVP_MAX_IV_LENGTH) != 1){
+    //     printf("Error: Cannot generate IV.\n");
+    //     return -1;
+    // }
 
     // Write AES key to bin file
-    FILE* fp = fopen("./Sender/aes_key&iv.bin","wb");
+    FILE* fp = fopen("./Sender/AES_key.bin","wb");
     if(fp == nullptr){
         printf("Error: Could not create key file.\n");
         fclose(fp);
@@ -97,8 +97,8 @@ int generateAESKey(){ // Generate 256-bit AES key
 
     // Write AES key and IV to a file with "\n!!!!!\n" as delimiter
     fwrite(AES_key, sizeof(unsigned char), AES_length, fp);
-    fwrite("\n!!!!!\n", sizeof(char), strlen("\n!!!!!\n"), fp);
-    fwrite(iv, sizeof(unsigned char), EVP_MAX_IV_LENGTH, fp);
+    //fwrite("\n!!!!!\n", sizeof(char), strlen("\n!!!!!\n"), fp);
+    //fwrite(iv, sizeof(unsigned char), EVP_MAX_IV_LENGTH, fp);
 
     fclose(fp);
 
@@ -110,18 +110,18 @@ int encryptMessage(const char* msg, const char* AES_file){
     // Set key to 0 to ensure buffer is clear of any previous data
     unsigned char AES_key[EVP_MAX_KEY_LENGTH];
     memset(AES_key, 0, EVP_MAX_KEY_LENGTH); 
-    unsigned char iv[EVP_MAX_IV_LENGTH];
-    memset(iv, 0, EVP_MAX_IV_LENGTH);
+    // unsigned char iv[EVP_MAX_IV_LENGTH];
+    // memset(iv, 0, EVP_MAX_IV_LENGTH);
 
-    // Split AES_file into AES key and IV
-    int result = splitFile(AES_file, "\n!!!!!\n", "./Sender/AES_key.bin", "./Sender/IV.bin");
-    if(result != 0){
-        printf("Error: could not split file into AES key and IV.\n");
-        return -1;
-    }
+    // // Split AES_file into AES key and IV
+    // int result = splitFile(AES_file, "\n!!!!!\n", "./Sender/AES_key.bin", "./Sender/IV.bin");
+    // if(result != 0){
+    //     printf("Error: could not split file into AES key and IV.\n");
+    //     return -1;
+    // }
 
     // Open file with AES key
-    FILE *aes_fp = fopen("./Sender/AES_key.bin", "rb");    
+    FILE *aes_fp = fopen(AES_file, "rb");    
     if(aes_fp == nullptr){
         printf("The AES key does not exist. Please generate a key before encrypting any messages.\n");
         fclose(aes_fp);
@@ -131,18 +131,18 @@ int encryptMessage(const char* msg, const char* AES_file){
     fclose(aes_fp);
 
     // Get IV from file
-    FILE* iv_fp = fopen("./Sender/IV.bin", "rb");
-    if(iv_fp == nullptr){
-        printf("The IV does not exist. Please generate an IV before encrypting any messages.\n");
-        fclose(iv_fp);
-        return -1;
-    }
-    fread(iv, 1, EVP_MAX_IV_LENGTH, iv_fp);
-    fclose(iv_fp);
+    // FILE* iv_fp = fopen("./Sender/IV.bin", "rb");
+    // if(iv_fp == nullptr){
+    //     printf("The IV does not exist. Please generate an IV before encrypting any messages.\n");
+    //     fclose(iv_fp);
+    //     return -1;
+    // }
+    // fread(iv, 1, EVP_MAX_IV_LENGTH, iv_fp);
+    // fclose(iv_fp);
 
-    // Encryption context with AES-256 CBC mode
+    // Encryption context with AES-256 ECB mode
     EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
-    EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, AES_key, iv);
+    EVP_EncryptInit_ex(ctx, EVP_aes_256_ecb(), NULL, AES_key, NULL);
     
     // Input plaintext message file and output to encrypted file
     std::ifstream input_file(msg, std::ios::binary);
