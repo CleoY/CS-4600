@@ -9,40 +9,16 @@
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 
-// Run from overall Final folder
+// To compile and run, use the following commands:
 // g++ -o Sender/senderOut Sender/sender.cpp -I/usr/local/opt/openssl@1.1/include -L/usr/local/opt/openssl@1.1/lib -lssl -lcrypto
-// g++ -o Sender/senderOut Sender/sender.cpp -I/opt/local/include -L/opt/local/lib -lssl -lcrypto
 // ./Sender/senderOut
-
-/**
- * Folder Organization:
- * Final: "Open channel" with Sender and Receiver directories + each party's public key + encrypted msg sent by sender
- * Sender dir: sender.cpp, files with public and private keys, plaintext file
- * Receiver dir: receiver.cpp + files with public and private keys
- * 
- * OR Transmitted_Data file includes public keys, encrypted msg + encrypted AES key + MAC
- *      Sender writes to file while receiver reads from it
-*/
-
-/**
- * Outline: 
- * Method for generating RSA private-public key pair
- * Generate AES key for message
- * Encrypt message with AES key
- * Encrypt AES KEY with RECEIVER'S RSA PUBLIC key
- * Authenticate WHOLE msg with MAC and append MAC to msg
- * Send encrypted messaged with encrypted AES key and MAC to "open channel"
- * 
-*/
 
 int generateAESKey();
 int encryptMessage(const char* msg, const char* AES_file);
 int encrypt_AES_key(const char* AES_file, const char* receiver_public_key);
 int combineFiles(const char* file1, const char* file2, const char* delimiter, const char* outputFile);
 int getFileSize(const char* fileName);
-int splitFile(const char* fileName, const char* delimiter, const char* output1, const char* output2);
 int generateHMAC(const char* keyFile, const char* inputFile);
-
 
 int main(){
     generateAESKey();
@@ -67,58 +43,38 @@ int main(){
 }
 
 
-int generateAESKey(){ // Generate 256-bit AES key
+// Generate the AES key
+int generateAESKey(){
+    // Allocate memory for AES key
     unsigned char AES_key[EVP_MAX_KEY_LENGTH];
-    int AES_length = EVP_MAX_KEY_LENGTH; // 32 bytes
-    //unsigned char iv[EVP_MAX_IV_LENGTH];
-    // Set key and iv to 0 to ensure buffer is clear of any previous data
+    int AES_length = EVP_MAX_KEY_LENGTH;
     memset(AES_key, 0, EVP_MAX_KEY_LENGTH); 
-    //memset(iv, 0, EVP_MAX_IV_LENGTH);
     
     // Generate random bytes for AES key
     if(RAND_bytes(AES_key, AES_length) != 1){ // Check to ensure AES key was generated successfully
-        printf("Error in generating AES key. Please try again.\n");
+        printf("Error: Cannot generate AES key.\n");
         return -1;
     }
-
-    // Initialize IV
-    // if(RAND_bytes(iv, EVP_MAX_IV_LENGTH) != 1){
-    //     printf("Error: Cannot generate IV.\n");
-    //     return -1;
-    // }
 
     // Write AES key to bin file
     FILE* fp = fopen("./Sender/AES_key.bin","wb");
     if(fp == nullptr){
-        printf("Error: Could not create key file.\n");
+        printf("Error: Cannot create AES key file.\n");
         fclose(fp);
         return -1;
     }
-
-    // Write AES key and IV to a file with "\n!!!!!\n" as delimiter
     fwrite(AES_key, sizeof(unsigned char), AES_length, fp);
-    //fwrite("\n!!!!!\n", sizeof(char), strlen("\n!!!!!\n"), fp);
-    //fwrite(iv, sizeof(unsigned char), EVP_MAX_IV_LENGTH, fp);
-
     fclose(fp);
 
     return 0;
 }
 
 
+// Encrypt the plaintext message with the AES key
 int encryptMessage(const char* msg, const char* AES_file){
     // Set key to 0 to ensure buffer is clear of any previous data
     unsigned char AES_key[EVP_MAX_KEY_LENGTH];
     memset(AES_key, 0, EVP_MAX_KEY_LENGTH); 
-    // unsigned char iv[EVP_MAX_IV_LENGTH];
-    // memset(iv, 0, EVP_MAX_IV_LENGTH);
-
-    // // Split AES_file into AES key and IV
-    // int result = splitFile(AES_file, "\n!!!!!\n", "./Sender/AES_key.bin", "./Sender/IV.bin");
-    // if(result != 0){
-    //     printf("Error: could not split file into AES key and IV.\n");
-    //     return -1;
-    // }
 
     // Open file with AES key
     FILE *aes_fp = fopen(AES_file, "rb");    
@@ -130,16 +86,6 @@ int encryptMessage(const char* msg, const char* AES_file){
     fread(AES_key, 1, EVP_MAX_KEY_LENGTH, aes_fp);
     fclose(aes_fp);
 
-    // Get IV from file
-    // FILE* iv_fp = fopen("./Sender/IV.bin", "rb");
-    // if(iv_fp == nullptr){
-    //     printf("The IV does not exist. Please generate an IV before encrypting any messages.\n");
-    //     fclose(iv_fp);
-    //     return -1;
-    // }
-    // fread(iv, 1, EVP_MAX_IV_LENGTH, iv_fp);
-    // fclose(iv_fp);
-
     // Encryption context with AES-256 ECB mode
     EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
     EVP_EncryptInit_ex(ctx, EVP_aes_256_ecb(), NULL, AES_key, NULL);
@@ -147,13 +93,13 @@ int encryptMessage(const char* msg, const char* AES_file){
     // Input plaintext message file and output to encrypted file
     std::ifstream input_file(msg, std::ios::binary);
     if(!input_file){
-        printf("Error: Could not find message file.\n");
+        printf("Error: Cannot find message file.\n");
         input_file.close();
         return -1;
     }
     std::ofstream output_file("./Sender/encrypted.txt.enc", std::ios::binary);
     if(!output_file){
-        printf("Error: Could not create output file.\n");
+        printf("Error: Cannot create encrypted message output file.\n");
         output_file.close();
         return -1;
     }
@@ -186,6 +132,7 @@ int encryptMessage(const char* msg, const char* AES_file){
 }
 
 
+// Encrypt the AES key with the receiver's public key
 int encrypt_AES_key(const char* AES_file, const char* receiver_public_key){
     // Get receiver's public key
     FILE* rsa_fp = fopen(receiver_public_key, "r");
@@ -199,6 +146,7 @@ int encrypt_AES_key(const char* AES_file, const char* receiver_public_key){
 
     if(rsa == nullptr){
         printf("The RSA pointer is NULL.\n");
+        RSA_free(rsa);
         return -1;
     }
 
@@ -209,6 +157,7 @@ int encrypt_AES_key(const char* AES_file, const char* receiver_public_key){
     if(aes_fp == nullptr){
         printf("The AES key does not exist. Please generate a key before encrypting any messages.\n");
         fclose(aes_fp);
+        RSA_free(rsa);
         return -1;
     }
     fread(AES_key, 1, EVP_MAX_KEY_LENGTH, aes_fp);
@@ -225,6 +174,12 @@ int encrypt_AES_key(const char* AES_file, const char* receiver_public_key){
 
     // Write encrypted AES key to file
     FILE* enc_AES_file = fopen("./Sender/encrypted_AES_key.bin", "wb");
+    if(enc_AES_file == nullptr){
+        printf("Error: Cannot create encrypted AES output file.\n");
+        fclose(enc_AES_file);
+        RSA_free(rsa);
+        return -1;
+    }
     fwrite(encrypted_AES_key, 1, encrypted_key_size, enc_AES_file);
     fclose(enc_AES_file);
 
@@ -235,22 +190,23 @@ int encrypt_AES_key(const char* AES_file, const char* receiver_public_key){
 }
 
 
+// Combine files
 int combineFiles(const char* file1, const char* file2, const char* delimiter, const char* outputFile){
     std::ifstream input1(file1, std::ios::binary);
     if(!input1){
-        printf("Error: Could not open first input file.\n");
+        printf("Error: Cannot open first input file.\n");
         input1.close();
         return -1;
     }
     std::ifstream input2(file2, std::ios::binary);
     if(!input2){
-        printf("Error: Could not open second input file.\n");
+        printf("Error: Cannot open second input file.\n");
         input2.close();
         return -1;
     }
     std::ofstream output(outputFile, std::ios::binary);
     if(!output){
-        printf("Error: Could not create output file.\n");
+        printf("Error: Cannot create output file.\n");
         output.close();
         return -1;
     }
@@ -258,6 +214,7 @@ int combineFiles(const char* file1, const char* file2, const char* delimiter, co
     // Append input1, delimiter, and input2 to output file
     output << input1.rdbuf() << delimiter << input2.rdbuf();
     
+    // Close file pointers
     input1.close();
     input2.close();
     output.close();
@@ -266,10 +223,11 @@ int combineFiles(const char* file1, const char* file2, const char* delimiter, co
 }
 
 
+// Get the size of a file whose name is passed
 int getFileSize(const char* fileName){
     FILE* file = fopen(fileName, "rb");
     if(file == nullptr){
-        printf("Could not open file.\n");
+        printf("Cannot open file.\n");
         return -1;
     }
 
@@ -283,6 +241,7 @@ int getFileSize(const char* fileName){
 }
 
 
+// Generate HMAC to be appended to message
 int generateHMAC(const char* keyFile, const char* inputFile){
     // Read HMAC key from file given in keyFile parameter
     unsigned char HMAC_key[EVP_MAX_KEY_LENGTH];
@@ -299,7 +258,8 @@ int generateHMAC(const char* keyFile, const char* inputFile){
     // Read data from inputFile
     FILE* input_fp = fopen(inputFile, "rb");
     if(input_fp == NULL){
-        printf("Could not find input file.\n");
+        printf("Cannot find input file.\n");
+        fclose(input_fp);
         return -1;
     }
     int fileSize = getFileSize(inputFile);
@@ -307,7 +267,7 @@ int generateHMAC(const char* keyFile, const char* inputFile){
     size_t readBytes = fread(dataBuffer.data(), 1, fileSize, input_fp);
     fclose(input_fp);
     if(readBytes != fileSize){ // if readBytes < fileSize, reading did not finish
-        printf("Error in reading the input file data.\n"); 
+        printf("Error: Cannot read input file data.\n"); 
         return -1;
     }
     
@@ -320,51 +280,11 @@ int generateHMAC(const char* keyFile, const char* inputFile){
     // Write HMAC to a file
     FILE* HMAC_file = fopen("./Sender/HMAC.bin", "wb");
     if(HMAC_file == nullptr){
-        printf("Error: Could not create HMAC file.\n");
+        printf("Error: Cannot create HMAC file.\n");
         return -1;
     }    
     fwrite(hmac, 1, hmacLength, HMAC_file);
     fclose(HMAC_file);
-
-    return 0;
-}
-
-
-int splitFile(const char* fileName, const char* delimiter, const char* output1, const char* output2){
-    // Open file
-    std::ifstream inputFile(fileName, std::ios::binary);
-    if(!inputFile){
-        printf("Error: Could not open input file.\n");
-        return -1;
-    }
-
-    // Create output streams for resulting files
-    std::ofstream outputFile1(output1, std::ios::binary);
-    std::ofstream outputFile2(output2, std::ios::binary);
-    if(!outputFile1 || !outputFile2){
-        printf("Error: Could not create output files.\n");
-        return -1;
-    }
-
-    // Read input file
-    std::string fileContent((std::istreambuf_iterator<char>(inputFile)), std::istreambuf_iterator<char>());
-    
-    // Find delimiter
-    size_t delimiterPosition = fileContent.find(delimiter);
-    if(delimiterPosition != std::string::npos){
-        // Split file in half based on delimiter
-        std::string firstHalf = fileContent.substr(0, delimiterPosition);
-        std::string secondHalf = fileContent.substr(delimiterPosition + strlen(delimiter));
-
-        // Write each half to the output files
-        outputFile1 << firstHalf;
-        outputFile2 << secondHalf;
-    }
-
-    // Close streams
-    inputFile.close();
-    outputFile1.close();
-    outputFile2.close();
 
     return 0;
 }

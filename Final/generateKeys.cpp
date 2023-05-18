@@ -2,6 +2,7 @@
 #include <openssl/pem.h>
 #include <openssl/rand.h>
 
+// To compile and run, use the following commands:
 // g++ -o keyGeneration generateKeys.cpp -I/usr/local/opt/openssl@1.1/include -L/usr/local/opt/openssl@1.1/lib -lssl -lcrypto
 // ./keyGeneration
 
@@ -30,12 +31,12 @@ int generateRSAKeyPair(int option){
 
     RSA_generate_key_ex(rsa, 2048, bn, nullptr);
 
-    // option 1 is generate the sender's key pair
+    // option 1 is to generate the sender's key pair
     if(option == 1){
         privateFile = "./Sender/sender_priv_key.pem";
         publicFile = "sender_public_key.pem";
     } 
-    // option 2 is generate the receiver's key pair
+    // option 2 is to generate the receiver's key pair
     else{
         privateFile = "./Receiver/receiver_priv_key.pem";
         publicFile = "receiver_public_key.pem";
@@ -45,7 +46,6 @@ int generateRSAKeyPair(int option){
     FILE* fp = fopen(privateFile, "wb");
     PEM_write_RSAPrivateKey(fp, rsa, nullptr, nullptr, 0, nullptr, nullptr);
     fclose(fp);
-
 
     // Write public key to pem file. 
     fp = fopen(publicFile, "wb");
@@ -72,20 +72,21 @@ int generateHMACKey(){
     // Write HMAC key to sender and receiver's folders to ensure they both have the key
     // Write HMAC key to sender's folder
     FILE* fp_sender = fopen("./Sender/HMAC_key.bin", "wb");
-
-
-    // Error handling to ensure fwrite worked?
-
+    if(fp_sender == nullptr){
+        printf("Error: Cannot create HMAC key file for sender.\n");
+        fclose(fp_sender);
+        return -1;
+    }
     fwrite(key, sizeof(unsigned char), key_size, fp_sender);
     fclose(fp_sender);
 
-    
     // Write HMAC key to receiver's folder
     FILE* fp_receiver = fopen("./Receiver/HMAC_key.bin", "wb");
-
-
-    // Error handling to ensure fwrite worked?
-
+    if(fp_receiver == nullptr){
+        printf("Error: Cannot create HMAC key file for receiver.\n");
+        fclose(fp_receiver);
+        return -1;
+    }
     fwrite(key, sizeof(unsigned char), key_size, fp_receiver);
     fclose(fp_receiver);
 
